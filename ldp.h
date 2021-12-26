@@ -12,5 +12,6 @@
 #include <arpa/inet.h>
 #include <netdb.h>
 
-void hello();
+#include <string>
+
 #endif //THE2_LDP_H

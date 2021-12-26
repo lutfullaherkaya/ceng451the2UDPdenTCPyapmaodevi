@@ -22,7 +22,7 @@ int bindMyPort(int sockfd, char* port) {
 
 	// bind it to the port we passed in to getaddrinfo():
 	// TODO: For dongusuyle butun iplere bak bagli listedeki
-	bind(sockfd, res->ai_addr, res->ai_addrlen);
+	return bind(sockfd, res->ai_addr, res->ai_addrlen);
 }
 
 int main(int argc, char *argv[])
@@ -32,7 +32,7 @@ int main(int argc, char *argv[])
 	int rv;
 	int numbytes;
 	// default c-line arguments
-	char* serverIP = "127.0.0.1", *myPort = "5201", *serverPort = "5200";
+	char* serverIP, *myPort, *serverPort;
 	
 
 	if (argc != 4) {
@@ -48,7 +48,7 @@ int main(int argc, char *argv[])
 	hints.ai_family = AF_INET; // set to AF_INET to use IPv4
 	hints.ai_socktype = SOCK_DGRAM;
 
-	if ((rv = getaddrinfo(argv[1], serverPort, &hints, &servinfo)) != 0) {
+	if ((rv = getaddrinfo(serverIP, serverPort, &hints, &servinfo)) != 0) {
 		fprintf(stderr, "getaddrinfo: %s\n", gai_strerror(rv));
 		return 1;
 	}
@@ -70,7 +70,7 @@ int main(int argc, char *argv[])
 		return 2;
 	}
 
-	if ((numbytes = sendto(sockfd, argv[2], strlen(argv[2]), 0,
+	if ((numbytes = sendto(sockfd, "deneme mesaj 1", strlen("deneme mesaj 1"), 0,
 			 p->ai_addr, p->ai_addrlen)) == -1) {
 		perror("talker: sendto");
 		exit(1);
@@ -78,7 +78,7 @@ int main(int argc, char *argv[])
 
 	freeaddrinfo(servinfo);
 
-	printf("talker: sent %d bytes to %s\n", numbytes, argv[1]);
+	printf("talker: sent %d bytes to %s\n", numbytes, serverIP);
 	close(sockfd);
 
 	return 0;
