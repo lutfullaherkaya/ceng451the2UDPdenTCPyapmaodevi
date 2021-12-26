@@ -1,1 +1,0 @@
-CMakeLists.txt not found in /media/lutfullah/Yüklük/Mektep/3. s 1 d/435 network/the2 Select CMakeLists.txt
