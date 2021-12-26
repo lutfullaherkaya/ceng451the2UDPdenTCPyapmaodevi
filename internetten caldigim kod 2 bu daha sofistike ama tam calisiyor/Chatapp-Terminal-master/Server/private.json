@@ -1,0 +1,126 @@
+{
+	"1" : 
+	{
+		"email" : "nihhaar@gmail.com",
+		"friends" : 
+		[
+			{
+				"id" : "2"
+			},
+			{
+				"id" : "3"
+			},
+			{
+				"id" : "4"
+			}
+		],
+		"join_date" : "2016-02-03",
+		"last_seen" : "2017-05-01 07:12",
+		"name" : "nihhaar",
+		"online" : "false",
+		"password" : "busy",
+		"requests" : null
+	},
+	"2" : 
+	{
+		"email" : "bvs@gmail.com",
+		"friends" : 
+		[
+			{
+				"id" : "1"
+			},
+			{
+				"id" : "3"
+			},
+			{
+				"id" : "4"
+			}
+		],
+		"join_date" : "2017-05-04",
+		"last_seen" : "2017-04-30 18:36",
+		"name" : "bvs",
+		"online" : "false",
+		"password" : "lazy"
+	},
+	"3" : 
+	{
+		"email" : "saisandeep@gmail.com",
+		"friends" : 
+		[
+			{
+				"id" : "2"
+			},
+			{
+				"id" : "4"
+			}
+		],
+		"join_date" : "2014-09-16",
+		"last_seen" : "2017-04-09 07:04",
+		"name" : "sandeep",
+		"online" : "true",
+		"password" : "stud"
+	},
+	"4" : 
+	{
+		"email" : "saiteja@gmail.com",
+		"friends" : 
+		[
+			{
+				"id" : "1"
+			}
+		],
+		"join_date" : "2012-12-21",
+		"last_seen" : "2017-03-31 11:30",
+		"name" : "saiteja",
+		"online" : "false",
+		"password" : "facts"
+	},
+	"5" : 
+	{
+		"email" : "new",
+		"friends" : 
+		[
+			{
+				"id" : "1"
+			}
+		],
+		"join_date" : "2017-04-30",
+		"last_seen" : "2017-04-30 16:14",
+		"name" : "new",
+		"online" : "false",
+		"password" : "new",
+		"requests" : []
+	},
+	"6" : 
+	{
+		"email" : "lerkaya0@gmail.com",
+		"friends" : 
+		[
+			{
+				"id" : "7"
+			}
+		],
+		"join_date" : "2021-12-18",
+		"last_seen" : "2021-12-18 16:00",
+		"name" : "lutfu",
+		"online" : "true",
+		"password" : "123",
+		"requests" : []
+	},
+	"7" : 
+	{
+		"email" : "ler@ler.com",
+		"friends" : 
+		[
+			{
+				"id" : "6"
+			}
+		],
+		"join_date" : "2021-12-18",
+		"last_seen" : "2021-12-18 16:01",
+		"name" : "mal",
+		"online" : "true",
+		"password" : "mal",
+		"requests" : null
+	}
+}
