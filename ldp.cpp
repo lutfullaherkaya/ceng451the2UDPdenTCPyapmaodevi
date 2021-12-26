@@ -16,13 +16,14 @@ class LDP {
 
 };
 
-int Chatter::ana(int argc, char **argv) {
 
+void *get_in_addr(struct sockaddr *sa) {
+    if (sa->sa_family == AF_INET) {
+        return &(((struct sockaddr_in *) sa)->sin_addr);
+    }
 
-    return 0;
+    return &(((struct sockaddr_in6 *) sa)->sin6_addr);
 }
-
-
 
 
 int Chatter::createSocket() {
@@ -41,14 +42,14 @@ int Chatter::createSocket() {
     struct addrinfo *p;
     // loop through all the results and bind to the first we can
     for (p = myAddrInfoPtr; p != NULL; p = p->ai_next) {
-        if ((talkingSockfd = socket(p->ai_family, p->ai_socktype,
+        if ((sockfd = socket(p->ai_family, p->ai_socktype,
                              p->ai_protocol)) == -1) {
             perror("chatter: socket");
             continue;
         }
 
-        if (bind(talkingSockfd, p->ai_addr, p->ai_addrlen) == -1) {
-            close(talkingSockfd);
+        if (bind(sockfd, p->ai_addr, p->ai_addrlen) == -1) {
+            close(sockfd);
             perror("chatter: bind");
             continue;
         }
@@ -69,9 +70,11 @@ Chatter::Chatter(const std::string &chateeIp, const std::string &chateePort, con
     createSocket();
     computeChateeAddrInfo();
     sendMessage("merhaba");
-    close(talkingSockfd);
+    receiveMessage();
+    close(sockfd);
 
 }
+
 
 int Chatter::computeChateeAddrInfo() {
     if (isClient) {
@@ -99,22 +102,63 @@ int Chatter::computeChateeAddrInfo() {
             fprintf(stderr, "talker: failed to getaddrinfo chatee address\n");
             return 2;
         }
-        chateeAddrInfo = *chateeAddrInfoPtr;
+        chateeSockaddr = *(chateeAddrInfoPtr->ai_addr);
         freeaddrinfo(chateeAddrInfoPtr);
     } else {
-        // is server
+        // client and server also compute it when receiveMessage is called.
     }
     return 0;
 }
 
 int Chatter::sendMessage(std::string message) {
     int numbytes;
-    if ((numbytes = sendto(talkingSockfd, message.c_str(), message.length(), 0,
-                           chateeAddrInfo.ai_addr, chateeAddrInfo.ai_addrlen)) == -1) {
+    if ((numbytes = sendto(sockfd, message.c_str(), message.length(), 0,
+                           &chateeSockaddr, sizeof(chateeSockaddr)) == -1)) {
         perror("talker: sendto");
         exit(1);
     }
 
     printf("talker: sent %d bytes to %s\n", numbytes, chateeIP.c_str());
     return numbytes;
+}
+
+Chatter::Chatter(const std::string &myPort, bool isClient) : myPort(myPort), isClient(isClient) {
+    createSocket();
+    receiveMessage();
+    sendMessage("merhaba sana da");
+    close(sockfd);
+}
+
+std::string Chatter::receiveMessage() {
+    // it is originally writen to be ipv4-ipv6 agnostic but I don't want to change it to ipv4
+    struct sockaddr_storage their_addr;
+    socklen_t addr_len;
+    char buf[MAXBUFLEN];
+
+    printf("listener: waiting to recvfrom...\n");
+
+
+    addr_len = sizeof their_addr;
+    int numbytes;
+    if ((numbytes = recvfrom(sockfd, buf, MAXBUFLEN - 1, 0,
+                             (struct sockaddr *) &their_addr, &addr_len)) == -1) {
+        perror("recvfrom");
+        exit(1);
+    }
+
+
+    /**
+     * computeChateeAddrInfo else part
+     */
+    chateeSockaddr = *((struct sockaddr *) &their_addr);
+    char s[INET6_ADDRSTRLEN];
+    printf("listener: got packet from %s\n",
+           inet_ntop(their_addr.ss_family,
+                     get_in_addr((struct sockaddr *) &their_addr),
+                     s, sizeof s));
+    printf("listener: packet is %d bytes long\n", numbytes);
+    buf[numbytes] = '\0';
+    printf("listener: packet contains \"%s\"\n", buf);
+
+    return buf;
 }

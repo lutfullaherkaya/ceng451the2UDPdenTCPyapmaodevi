@@ -14,20 +14,23 @@
 
 #include <string>
 
+#define MAXBUFLEN 100
+
+void *get_in_addr(struct sockaddr *sa);
+
 class Chatter {
 public:
     std::string chateeIP;
     std::string chateePort;
     std::string myPort;
     struct addrinfo myAddrInfo;
-    struct addrinfo chateeAddrInfo;
+    struct sockaddr chateeSockaddr;
     bool isClient;
-    int talkingSockfd;
-    int listeningSockfd;
+    int sockfd;
 
     Chatter(const std::string &chateeIp, const std::string &chateePort, const std::string &myPort, bool isClient);
+    Chatter(const std::string &myPort, bool isClient);
 
-    int ana(int argc, char *argv[]);
     /**
      * also computes myAddrInfo
      * @return
@@ -35,6 +38,8 @@ public:
     int createSocket();
     int computeChateeAddrInfo();
     int sendMessage(std::string message);
+    std::string receiveMessage();
+
 
 };
 

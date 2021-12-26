@@ -3,17 +3,19 @@
 CC = g++
 OBJCLI = client.cpp ldp.cpp
 OBJSRV = server.cpp ldp.cpp
-CFLAGS = 
+CPPFLAGS = -g
 # setup for system
 LIBS = -lpthread
 
 all: client server
 
+
+
 client:	$(OBJCLI)
-	$(CC) $(CFLAGS) -o $@ $(OBJCLI) $(LIBS)
+	$(CC) $(CPPFLAGS) -o $@ $(OBJCLI) $(LIBS)
 
 server:	$(OBJSRV)
-	$(CC) $(CFLAGS) -o $@ $(OBJSRV) $(LIBS)
+	$(CC) $(CPPFLAGS) -o $@ $(OBJSRV) $(LIBS)
 
 clean:
 	rm client server

@@ -9,13 +9,10 @@
 
 
 int main(int argc, char *argv[]) {
-    std::string serverIP, myPort, serverPort;
-
     if (argc != 4) {
         fprintf(stderr,"usage: ./client <server-ip> <server-port-number> <client-port-number> .\n");
         exit(1);
     }
-    Chatter clientChatter(argv[1], argv[2], argv[3], 1);
-    clientChatter.ana(argc, argv);
+    Chatter clientChatter(argv[1], argv[2], argv[3], true);
     return 0;
 }
