@@ -13,9 +13,63 @@
 #include "ldp.h"
 
 
-class LDP {
+void *serialize_uint32_t(void *buffer, uint32_t value) {
+    *((uint32_t *) buffer) = htonl(value);
+    return ((uint32_t *) buffer) + 1;
+}
 
-};
+void *deserialize_uint32_t(void *buffer, uint32_t *value) {
+    *value = ntohl(*((uint32_t *) buffer));
+    return ((uint32_t *) buffer) + 1;
+}
+
+void *serialize_uint16_t(void *buffer, uint16_t value) {
+    *((uint16_t *) buffer) = htons(value);
+    return ((uint16_t *) buffer) + 1;
+}
+
+void *deserialize_uint16_t(void *buffer, uint16_t *value) {
+    *value = ntohs(*((uint16_t *) buffer));
+    return ((uint16_t *) buffer) + 1;
+}
+
+/**
+ *
+ * @param buffer
+ * @param str perhaps not null terminated string
+ * @param n
+ * @return
+ */
+void *serialize_char_array(void *buffer, char *str, size_t n) {
+    for (int i = 0; i < n; ++i) {
+        ((char *) buffer)[i] = str[i];
+    }
+    return ((char *) buffer) + n;
+}
+
+/**
+ *
+ * @param buffer
+ * @param str the output char array
+ * @param n
+ * @return
+ */
+void *deserialize_char_array(void *buffer, char *str, size_t n) {
+    for (int i = 0; i < n; ++i) {
+        str[i] = ((char *) buffer)[i];
+    }
+    return ((char *) buffer) + n;
+}
+
+void *serialize_char(void *buffer, char value) {
+    ((char *) buffer)[0] = value;
+    return ((char *) buffer) + 1;
+}
+
+void *deserialize_char(void *buffer, char *value) {
+    *value = ((char *) buffer)[0];
+    return ((char *) buffer) + 1;
+}
 
 
 void *get_in_addr(struct sockaddr *sa) {
@@ -101,8 +155,17 @@ int Chatter::computeChateeAddrInfo() {
 }
 
 int Chatter::sendMessage(std::string message) {
+    char messageArr[MAXBUFLEN];
+    for (int i = 0; i < message.length(); ++i) {
+        messageArr[i] = message[i];
+    }
+    LDPPacket packet(messageArr, message.length());
+
+    char encodedMessage[LDP_PACKET_SIZE];
+    packet.encode(encodedMessage);
+
     int numbytes;
-    if ((numbytes = sendto(sockfd, message.c_str(), message.length(), 0,
+    if ((numbytes = sendto(sockfd, encodedMessage, LDP_PACKET_SIZE, 0,
                            &chateeSockaddr, sizeof(chateeSockaddr))) == -1) {
         perror("talker: sendto");
         exit(1);
@@ -138,14 +201,19 @@ std::string Chatter::receiveMessage() {
                                    s, sizeof s);
     buf[numbytes] = '\0';
 
-
-    return buf;
+    LDPPacket packet = LDPPacket::decode(buf, 8);
+    std::string returnval;
+    if (packet.isCorrupted) {
+        returnval = "(corrupted string): ";
+    }
+    returnval += std::string(packet.payload);
+    return returnval;
 }
 
 Chatter::Chatter(const std::string &chateeIp, const std::string &chateePort, const std::string &myPort, bool isClient)
         : chateeIP(chateeIp), chateePort(chateePort), myPort(myPort), isClient(isClient) {
     // client
-    /*initializeMutexes();*/
+    initializeMutexes();
     createAndBindSocket();
     computeChateeAddrInfo();
 
@@ -158,6 +226,7 @@ Chatter::Chatter(const std::string &chateeIp, const std::string &chateePort, con
     }
 
     pthread_join(listenerThreadID, NULL);
+    destroyMutexes();
     close(sockfd);
 
 }
@@ -166,7 +235,8 @@ Chatter::Chatter(const std::string &myPort, bool isClient) : myPort(myPort), isC
     // server
     initializeMutexes();
     createAndBindSocket();
-    receiveMessage();
+    std::string message = receiveMessage();
+    printf(ANSI_COLOR_YELLOW "CONNECTION ESTABLISHED. \nchatee: %s" ANSI_COLOR_RESET "\n", message.c_str());
 
     setIsListening(true);
     pthread_t listenerThreadID;
@@ -176,6 +246,7 @@ Chatter::Chatter(const std::string &myPort, bool isClient) : myPort(myPort), isC
         sendMessage(getInput());
     }
 
+    destroyMutexes();
     close(sockfd);
 }
 
@@ -195,8 +266,8 @@ void *Chatter::listener() {
     std::string message;
     do {
         message = receiveMessage();
-        printf(ANSI_COLOR_YELLOW "chatee: %s" ANSI_COLOR_RESET, message.c_str());
-    } while (message != "BYE");
+        printf(ANSI_COLOR_YELLOW "chatee: %s" ANSI_COLOR_RESET "\n", message.c_str());
+    } while (message != "BYE\n");
     endChat();
     return NULL;
 }
@@ -227,8 +298,8 @@ Chatter::~Chatter() {
 }
 
 int Chatter::initializeMutexes() {
-    pthread_mutex_init( &(ioLock), NULL);
-    pthread_mutex_init( &(isListeningLock), NULL);
+    pthread_mutex_init(&(ioLock), NULL);
+    pthread_mutex_init(&(isListeningLock), NULL);
     return 0;
 }
 
@@ -246,4 +317,69 @@ std::string Chatter::getInput() {
     printf(ANSI_COLOR_RESET);
 
     return message;
+}
+
+/**
+ * source: https://cse.usf.edu/~kchriste/tools/checksum.c
+ */
+uint16_t LDPPacket::calculateChecksum(void *data, size_t n) {
+    // Note: I don't include psuedo ip header in the checksum.
+    // It is LDP implementation choice. It is not because I don't want to do any more work at all
+
+    uint32_t sum = 0;
+
+    uint16_t *dataPtr16 = (uint16_t *) data;
+    while (n > 1) {
+        sum += *dataPtr16;
+        dataPtr16++;
+        n -= 2;
+    }
+
+    // Add left-over byte, if any
+    if (n > 0) {
+        sum += ((uint8_t *) data)[n - 1];
+    }
+
+    // Fold 32-bit sum to 16 bits
+    while (sum >> 16)
+        sum = (sum & 0xFFFF) + (sum >> 16);
+
+    return (~sum);
+}
+
+
+LDPPacket::LDPPacket() : isCorrupted(false) {}
+
+LDPPacket LDPPacket::decode(void *data, size_t n) {
+    LDPPacket packet;
+    void *startOfDataPtr = data;
+    data = deserialize_uint16_t(data, &(packet.checksum));
+
+    data = deserialize_char_array(data, packet.payload, 8);
+
+    packet.isCorrupted = packet.checksum != calculateChecksum(((int16_t*)startOfDataPtr)+1, LDP_PACKET_SIZE-2);
+    return packet;
+}
+
+size_t LDPPacket::encode(void *data) {
+    // the first 2 bytes is checksum, serialized at the end
+    void *startOfDataPtr = data;
+    data = ((uint16_t *) startOfDataPtr) + 1;
+
+    data = serialize_char_array(data, payload, 8);
+
+    checksum = calculateChecksum(((uint16_t *) startOfDataPtr) + 1, LDP_PACKET_SIZE - 2);
+    serialize_uint16_t(startOfDataPtr, checksum);
+
+    return LDP_PACKET_SIZE;
+}
+
+LDPPacket::LDPPacket(char *message, size_t n) : isCorrupted(false) {
+    int i;
+    for (i = 0; i < 8 && i < n; ++i) {
+        payload[i] = message[i];
+    }
+    if (i < 8) {
+        payload[i] = '\0';
+    }
 }

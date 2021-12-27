@@ -26,9 +26,13 @@
 #include <pthread.h>
 
 #include <string>
+#include <vector>
 
 // todo: sil?
 #define MAXBUFLEN 100
+
+#define LDP_PACKET_SIZE 10
+
 #define ANSI_COLOR_RED     "\x1b[31m"
 #define ANSI_COLOR_GREEN   "\x1b[32m"
 #define ANSI_COLOR_YELLOW  "\x1b[33m"
@@ -39,6 +43,91 @@
 
 void *get_in_addr(struct sockaddr *sa);
 
+// serialize source (mostly modified): https://stackoverflow.com/questions/1577161/passing-a-structure-through-sockets-in-c
+void *serialize_uint32_t(void *buffer, uint32_t value);
+
+void *deserialize_uint32_t(void *buffer, uint32_t *value);
+
+void *serialize_uint16_t(void *buffer, uint16_t value);
+
+void *deserialize_uint16_t(void *buffer, uint16_t *value);
+
+/**
+ *
+ * @param buffer
+ * @param str perhaps not null terminated string
+ * @param n
+ * @return
+ */
+void *serialize_char_array(void *buffer, char *str, size_t n);
+
+/**
+ *
+ * @param buffer
+ * @param str the output char array
+ * @param n
+ * @return
+ */
+void *deserialize_char_array(void *buffer, char *str, size_t n);
+
+void *serialize_char(void *buffer, char value);
+
+void *deserialize_char(void *buffer, char *value);
+
+class LDPPacket {
+public:
+    // PACKET START ------------------------------------------------
+    /**
+     * the checksum field of the decoded packet.
+     * calculated when sending and deserialized from the packet data when receiving.
+     * note: is is not 16 byte asdfasdfasd it is 16 bit, so 2 byte.
+     */
+    uint16_t checksum;
+
+    char payload[8];
+
+    // PACKET END ----------------------------------------
+
+    bool isCorrupted;
+
+    LDPPacket();
+
+
+    LDPPacket(char *data, size_t n);
+
+    /**
+     *
+     * @param data the output
+     * @return the output byte count
+     */
+    size_t encode(void *data);
+
+    /**
+     * decodes the data and returns the packet object
+     * @param data encoded data
+     * @param n size
+     */
+    static LDPPacket decode(void *data, size_t n);
+
+
+
+    static uint16_t calculateChecksum(void *data, size_t n);
+};
+
+class LDP {
+public:
+    void ldpSend(std::string);
+
+    void udtSend(LDPPacket &packet);
+
+    LDPPacket makePkt(void *data, size_t n);
+
+    LDPPacket ldpRcv();
+
+    std::string deliverData();
+
+
+};
 
 class Chatter {
 private:
@@ -63,7 +152,9 @@ public:
     Chatter(const std::string &myPort, bool isClient);
 
     int initializeMutexes();
+
     int destroyMutexes();
+
     /**
      * also computes myAddrInfo
      * @return
@@ -75,6 +166,7 @@ public:
     void initiateChat();
 
     std::string getInput();
+
     int sendMessage(std::string message);
 
     std::string receiveMessage();
