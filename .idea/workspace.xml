@@ -1,0 +1,236 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="AutoImportSettings">
+    <option name="autoReloadType" value="SELECTIVE" />
+  </component>
+  <component name="CMakeRunConfigurationManager" shouldGenerate="true" shouldDeleteObsolete="true">
+    <generated>
+      <config projectName="the2" targetName="all" />
+      <config projectName="the2" targetName="server" />
+      <config projectName="the2" targetName="client" />
+    </generated>
+  </component>
+  <component name="CMakeSettings">
+    <configurations>
+      <configuration PROFILE_NAME="Debug" ENABLED="true" CONFIG_NAME="Debug" />
+    </configurations>
+  </component>
+  <component name="ChangeListManager">
+    <list default="true" id="6c32ae89-926d-4d8a-9c14-ab01e47c954f" name="Changes" comment="sınıflara güçler ayrılığı ilkesini nakşettim. sırada gönderme penceresi ve ack ve timeout kaldı." />
+    <option name="SHOW_DIALOG" value="false" />
+    <option name="HIGHLIGHT_CONFLICTS" value="true" />
+    <option name="HIGHLIGHT_NON_ACTIVE_CHANGELIST" value="false" />
+    <option name="LAST_RESOLUTION" value="IGNORE" />
+  </component>
+  <component name="ClangdSettings">
+    <option name="formatViaClangd" value="false" />
+  </component>
+  <component name="ExternalProjectsData">
+    <projectState path="$PROJECT_DIR$">
+      <ProjectState />
+    </projectState>
+  </component>
+  <component name="Git.Settings">
+    <option name="RECENT_GIT_ROOT_PATH" value="$PROJECT_DIR$" />
+  </component>
+  <component name="GitSEFilterConfiguration">
+    <file-type-list>
+      <filtered-out-file-type name="LOCAL_BRANCH" />
+      <filtered-out-file-type name="REMOTE_BRANCH" />
+      <filtered-out-file-type name="TAG" />
+      <filtered-out-file-type name="COMMIT_BY_MESSAGE" />
+    </file-type-list>
+  </component>
+  <component name="MakefileLocalSettings">
+    <option name="availableProjects">
+      <map>
+        <entry>
+          <key>
+            <ExternalProjectPojo>
+              <option name="name" value="the2" />
+              <option name="path" value="$PROJECT_DIR$" />
+            </ExternalProjectPojo>
+          </key>
+          <value>
+            <list>
+              <ExternalProjectPojo>
+                <option name="name" value="the2" />
+                <option name="path" value="$PROJECT_DIR$" />
+              </ExternalProjectPojo>
+            </list>
+          </value>
+        </entry>
+      </map>
+    </option>
+    <option name="projectSyncType">
+      <map>
+        <entry key="$PROJECT_DIR$" value="RE_IMPORT" />
+      </map>
+    </option>
+  </component>
+  <component name="MarkdownSettingsMigration">
+    <option name="stateVersion" value="1" />
+  </component>
+  <component name="ProjectApplicationVersion">
+    <option name="ide" value="CLion" />
+    <option name="majorVersion" value="2021" />
+    <option name="minorVersion" value="3.1" />
+  </component>
+  <component name="ProjectId" id="22p7ahY1lxSmTJxa9nYSfekScbd" />
+  <component name="ProjectLevelVcsManager">
+    <ConfirmationsSetting value="2" id="Add" />
+  </component>
+  <component name="ProjectViewState">
+    <option name="hideEmptyMiddlePackages" value="true" />
+    <option name="showLibraryContents" value="true" />
+  </component>
+  <component name="PropertiesComponent">
+    <property name="ASKED_ADD_EXTERNAL_FILES" value="true" />
+    <property name="RunOnceActivity.OpenProjectViewOnStart" value="true" />
+    <property name="RunOnceActivity.ShowReadmeOnStart" value="true" />
+    <property name="RunOnceActivity.cidr.known.project.marker" value="true" />
+    <property name="SHARE_PROJECT_CONFIGURATION_FILES" value="true" />
+    <property name="WebServerToolWindowFactoryState" value="false" />
+    <property name="cf.first.check.clang-format" value="false" />
+    <property name="cidr.known.project.marker" value="true" />
+    <property name="node.js.detected.package.eslint" value="true" />
+    <property name="node.js.selected.package.eslint" value="(autodetect)" />
+    <property name="nodejs_package_manager_path" value="npm" />
+    <property name="run.code.analysis.last.selected.profile" value="pProject Default" />
+    <property name="settings.editor.selected.configurable" value="preferences.sourceCode.C/C++" />
+  </component>
+  <component name="RunManager" selected="Makefile Application.server">
+    <configuration name="all" type="CLionNativeAppRunConfigurationType" REDIRECT_INPUT="false" ELEVATE="false" USE_EXTERNAL_CONSOLE="false" PASS_PARENT_ENVS_2="true" PROJECT_NAME="the2" TARGET_NAME="all" CONFIG_NAME="all" version="1">
+      <method v="2">
+        <option name="CLION.COMPOUND.BUILD" enabled="true" />
+      </method>
+    </configuration>
+    <configuration name="client" type="CLionNativeAppRunConfigurationType" PROGRAM_PARAMS="127.0.0.1 5200 5201" REDIRECT_INPUT="false" ELEVATE="false" USE_EXTERNAL_CONSOLE="false" PASS_PARENT_ENVS_2="true" PROJECT_NAME="the2" TARGET_NAME="client" CONFIG_NAME="client" version="1" RUN_PATH="$PROJECT_DIR$/client">
+      <method v="2">
+        <option name="CLION.COMPOUND.BUILD" enabled="true" />
+      </method>
+    </configuration>
+    <configuration name="server" type="CLionNativeAppRunConfigurationType" PROGRAM_PARAMS="5202" REDIRECT_INPUT="false" ELEVATE="false" USE_EXTERNAL_CONSOLE="false" WORKING_DIR="file://$PROJECT_DIR$" PASS_PARENT_ENVS_2="true" PROJECT_NAME="the2" TARGET_NAME="server" CONFIG_NAME="server" version="1" RUN_PATH="$PROJECT_DIR$/server">
+      <method v="2">
+        <option name="CLION.COMPOUND.BUILD" enabled="true" />
+      </method>
+    </configuration>
+    <configuration name="all" type="MAKEFILE_TARGET_RUN_CONFIGURATION" factoryName="Makefile" temporary="true">
+      <makefile filename="$PROJECT_DIR$/Makefile" target="all" workingDirectory="" arguments="">
+        <envs />
+      </makefile>
+      <method v="2" />
+    </configuration>
+    <configuration name="client" type="MAKEFILE_TARGET_RUN_CONFIGURATION" factoryName="Makefile" temporary="true">
+      <makefile filename="$PROJECT_DIR$/Makefile" target="client" workingDirectory="" arguments="">
+        <envs />
+      </makefile>
+      <method v="2" />
+    </configuration>
+    <configuration name="server" type="MAKEFILE_TARGET_RUN_CONFIGURATION" factoryName="Makefile" temporary="true">
+      <makefile filename="$PROJECT_DIR$/Makefile" target="server" workingDirectory="" arguments="">
+        <envs />
+      </makefile>
+      <method v="2" />
+    </configuration>
+    <list>
+      <item itemvalue="Makefile Application.all" />
+      <item itemvalue="Makefile Application.client" />
+      <item itemvalue="Makefile Application.server" />
+      <item itemvalue="Makefile Target.server" />
+      <item itemvalue="Makefile Target.client" />
+      <item itemvalue="Makefile Target.all" />
+    </list>
+    <recent_temporary>
+      <list>
+        <item itemvalue="Makefile Target.client" />
+        <item itemvalue="Makefile Target.all" />
+        <item itemvalue="Makefile Target.server" />
+      </list>
+    </recent_temporary>
+  </component>
+  <component name="SpellCheckerSettings" RuntimeDictionaries="0" Folders="0" CustomDictionaries="0" DefaultDictionary="application-level" UseSingleDictionary="true" transferred="true" />
+  <component name="TaskManager">
+    <task active="true" id="Default" summary="Default task">
+      <changelist id="6c32ae89-926d-4d8a-9c14-ab01e47c954f" name="Changes" comment="" />
+      <created>1640522741520</created>
+      <option name="number" value="Default" />
+      <option name="presentableId" value="Default" />
+      <updated>1640522741520</updated>
+      <workItem from="1640522743160" duration="27470000" />
+      <workItem from="1640553004573" duration="952000" />
+      <workItem from="1640588552515" duration="27484000" />
+    </task>
+    <task id="LOCAL-00001" summary="client kismini nesne yonelimli seye gecirdim ve soket programlama hakkındaki ufkum birkaç metre genişledi.">
+      <created>1640533402963</created>
+      <option name="number" value="00001" />
+      <option name="presentableId" value="LOCAL-00001" />
+      <option name="project" value="LOCAL" />
+      <updated>1640533402963</updated>
+    </task>
+    <task id="LOCAL-00002" summary="client ve server tamamen nesne yonelimli seye gecirildi ve artik hem mesaj gonderebiliyorlar hem de mesaj alabiliyorlar. şimdi multithread yapıp güvenilir yapma kaldı.">
+      <created>1640539656519</created>
+      <option name="number" value="00002" />
+      <option name="presentableId" value="LOCAL-00002" />
+      <option name="project" value="LOCAL" />
+      <updated>1640539656519</updated>
+    </task>
+    <task id="LOCAL-00003" summary="kitaptaki rdt'yi (bölüm 3.4) implement etmeye başlıyorum">
+      <created>1640589493073</created>
+      <option name="number" value="00003" />
+      <option name="presentableId" value="LOCAL-00003" />
+      <option name="project" value="LOCAL" />
+      <updated>1640589493073</updated>
+    </task>
+    <task id="LOCAL-00004" summary="checksum ve serializasyon (structu parçalayıp gönderip geri birleştirme) bitti. şimdi hatalı mesajı anlıyoruz. sırada soket kurma falan kısmını LDP sınıfına taşıma kaldı. chatterde sadece yüksek seviye fonksyionlar olsun. ldp'de olsun güvenilir veri transfer protokolü kısmı. paket kısmı da ldp packette.">
+      <created>1640608250969</created>
+      <option name="number" value="00004" />
+      <option name="presentableId" value="LOCAL-00004" />
+      <option name="project" value="LOCAL" />
+      <updated>1640608250969</updated>
+    </task>
+    <task id="LOCAL-00005" summary="sınıflara güçler ayrılığı ilkesini nakşettim. sırada gönderme penceresi ve ack ve timeout kaldı.">
+      <created>1640627092260</created>
+      <option name="number" value="00005" />
+      <option name="presentableId" value="LOCAL-00005" />
+      <option name="project" value="LOCAL" />
+      <updated>1640627092260</updated>
+    </task>
+    <option name="localTasksCounter" value="6" />
+    <servers />
+  </component>
+  <component name="TypeScriptGeneratedFilesManager">
+    <option name="version" value="3" />
+  </component>
+  <component name="Vcs.Log.Tabs.Properties">
+    <option name="TAB_STATES">
+      <map>
+        <entry key="MAIN">
+          <value>
+            <State />
+          </value>
+        </entry>
+      </map>
+    </option>
+  </component>
+  <component name="VcsManagerConfiguration">
+    <option name="ADD_EXTERNAL_FILES_SILENTLY" value="true" />
+    <MESSAGE value="client kismini nesne yonelimli seye gecirdim ve soket programlama hakkındaki ufkum birkaç metre genişledi." />
+    <MESSAGE value="client ve server tamamen nesne yonelimli seye gecirildi ve artik hem mesaj gonderebiliyorlar hem de mesaj alabiliyorlar. şimdi multithread yapıp güvenilir yapma kaldı." />
+    <MESSAGE value="kitaptaki rdt'yi (bölüm 3.4) implement etmeye başlıyorum" />
+    <MESSAGE value="checksum ve serializasyon (structu parçalayıp gönderip geri birleştirme) bitti. şimdi hatalı mesajı anlıyoruz. sırada soket kurma falan kısmını LDP sınıfına taşıma kaldı. chatterde sadece yüksek seviye fonksyionlar olsun. ldp'de olsun güvenilir veri transfer protokolü kısmı. paket kısmı da ldp packette." />
+    <MESSAGE value="sınıflara güçler ayrılığı ilkesini nakşettim. sırada gönderme penceresi ve ack ve timeout kaldı." />
+    <option name="LAST_COMMIT_MESSAGE" value="sınıflara güçler ayrılığı ilkesini nakşettim. sırada gönderme penceresi ve ack ve timeout kaldı." />
+  </component>
+  <component name="XDebuggerManager">
+    <breakpoint-manager>
+      <breakpoints>
+        <line-breakpoint enabled="true" type="com.jetbrains.cidr.execution.debugger.OCBreakpointType">
+          <url>file://$PROJECT_DIR$/ldp.cpp</url>
+          <line>90</line>
+          <option name="timeStamp" value="24" />
+        </line-breakpoint>
+      </breakpoints>
+    </breakpoint-manager>
+  </component>
+</project>
