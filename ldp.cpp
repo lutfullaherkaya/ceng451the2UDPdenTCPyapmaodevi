@@ -7,6 +7,7 @@
  * special thanks to the code of udp client/server taken from beej guide: http://beej.us/guide/bgnet/html
  * @copyright Copyright (c) 2021
  *
+ * Bismillahirrahmanirrahim.
  */
 
 #include "ldp.h"
@@ -26,7 +27,7 @@ void *get_in_addr(struct sockaddr *sa) {
 }
 
 
-int Chatter::createSocket() {
+int Chatter::createAndBindSocket() {
     struct addrinfo hints;
     memset(&hints, 0, sizeof hints);
     hints.ai_family = AF_INET;  // use IPv4 or IPv6, whichever
@@ -60,19 +61,8 @@ int Chatter::createSocket() {
         fprintf(stderr, "talker: failed to bind socket\n");
         return 2;
     }
-    myAddrInfo = *myAddrInfoPtr;
     freeaddrinfo(myAddrInfoPtr);
     return 0;
-}
-
-Chatter::Chatter(const std::string &chateeIp, const std::string &chateePort, const std::string &myPort, bool isClient)
-        : chateeIP(chateeIp), chateePort(chateePort), myPort(myPort), isClient(isClient) {
-    createSocket();
-    computeChateeAddrInfo();
-    sendMessage("merhaba");
-    receiveMessage();
-    close(sockfd);
-
 }
 
 
@@ -113,29 +103,20 @@ int Chatter::computeChateeAddrInfo() {
 int Chatter::sendMessage(std::string message) {
     int numbytes;
     if ((numbytes = sendto(sockfd, message.c_str(), message.length(), 0,
-                           &chateeSockaddr, sizeof(chateeSockaddr)) == -1)) {
+                           &chateeSockaddr, sizeof(chateeSockaddr))) == -1) {
         perror("talker: sendto");
         exit(1);
     }
 
-    printf("talker: sent %d bytes to %s\n", numbytes, chateeIP.c_str());
     return numbytes;
 }
 
-Chatter::Chatter(const std::string &myPort, bool isClient) : myPort(myPort), isClient(isClient) {
-    createSocket();
-    receiveMessage();
-    sendMessage("merhaba sana da");
-    close(sockfd);
-}
 
 std::string Chatter::receiveMessage() {
     // it is originally writen to be ipv4-ipv6 agnostic but I don't want to change it to ipv4
     struct sockaddr_storage their_addr;
     socklen_t addr_len;
     char buf[MAXBUFLEN];
-
-    printf("listener: waiting to recvfrom...\n");
 
 
     addr_len = sizeof their_addr;
@@ -152,13 +133,117 @@ std::string Chatter::receiveMessage() {
      */
     chateeSockaddr = *((struct sockaddr *) &their_addr);
     char s[INET6_ADDRSTRLEN];
-    printf("listener: got packet from %s\n",
-           inet_ntop(their_addr.ss_family,
-                     get_in_addr((struct sockaddr *) &their_addr),
-                     s, sizeof s));
-    printf("listener: packet is %d bytes long\n", numbytes);
+    std::string sender = inet_ntop(their_addr.ss_family,
+                                   get_in_addr((struct sockaddr *) &their_addr),
+                                   s, sizeof s);
     buf[numbytes] = '\0';
-    printf("listener: packet contains \"%s\"\n", buf);
+
 
     return buf;
+}
+
+Chatter::Chatter(const std::string &chateeIp, const std::string &chateePort, const std::string &myPort, bool isClient)
+        : chateeIP(chateeIp), chateePort(chateePort), myPort(myPort), isClient(isClient) {
+    // client
+    /*initializeMutexes();*/
+    createAndBindSocket();
+    computeChateeAddrInfo();
+
+    setIsListening(true);
+    pthread_t listenerThreadID;
+    pthread_create(&listenerThreadID, NULL, &Chatter::listenerHelper, this);
+
+    while (getIsListening()) {
+        sendMessage(getInput());
+    }
+
+    pthread_join(listenerThreadID, NULL);
+    close(sockfd);
+
+}
+
+Chatter::Chatter(const std::string &myPort, bool isClient) : myPort(myPort), isClient(isClient) {
+    // server
+    initializeMutexes();
+    createAndBindSocket();
+    receiveMessage();
+
+    setIsListening(true);
+    pthread_t listenerThreadID;
+    pthread_create(&listenerThreadID, NULL, &Chatter::listenerHelper, this);
+
+    while (getIsListening()) {
+        sendMessage(getInput());
+    }
+
+    close(sockfd);
+}
+
+void Chatter::initiateChat() {
+
+}
+
+void Chatter::endChat() {
+    // todo: gerekli ack mack falan filan yapilacak
+    setIsListening(false);
+
+    printf("The Chat has been terminated.\n");
+}
+
+void *Chatter::listener() {
+    printf("listener: waiting to recvfrom...\n");
+    std::string message;
+    do {
+        message = receiveMessage();
+        printf(ANSI_COLOR_YELLOW "chatee: %s" ANSI_COLOR_RESET, message.c_str());
+    } while (message != "BYE");
+    endChat();
+    return NULL;
+}
+
+void Chatter::speaker() {
+
+}
+
+void *Chatter::listenerHelper(void *context) {
+    return ((Chatter *) context)->listener();
+}
+
+bool Chatter::getIsListening() {
+    pthread_mutex_lock(&isListeningLock);
+    bool isListening1 = isListening;
+    pthread_mutex_unlock(&isListeningLock);
+    return isListening1;
+}
+
+void Chatter::setIsListening(bool isListening1) {
+    pthread_mutex_lock(&isListeningLock);
+    isListening = isListening1;
+    pthread_mutex_unlock(&isListeningLock);
+}
+
+Chatter::~Chatter() {
+    destroyMutexes();
+}
+
+int Chatter::initializeMutexes() {
+    pthread_mutex_init( &(ioLock), NULL);
+    pthread_mutex_init( &(isListeningLock), NULL);
+    return 0;
+}
+
+int Chatter::destroyMutexes() {
+    pthread_mutex_destroy(&ioLock);
+    pthread_mutex_destroy(&isListeningLock);
+    return 0;
+}
+
+std::string Chatter::getInput() {
+    // todo: nonblocking io yapman lazim. bunlara mutex yapinca yazarken gelen mesajlar gozukmuyor. yapmayinca s1k1nt1 olabilir.
+    char message[MAXBUFLEN];
+    printf(ANSI_COLOR_GREEN);
+    fgets(message, MAXBUFLEN, stdin);
+    printf(ANSI_COLOR_RESET);
+
+    return message;
 }
