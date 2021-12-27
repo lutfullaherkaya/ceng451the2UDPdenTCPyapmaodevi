@@ -29,17 +29,9 @@
 #include <vector>
 
 // todo: sil?
-#define MAXBUFLEN 100
+#define MAXBUFLEN 123
 
 #define LDP_PACKET_SIZE 10
-
-#define ANSI_COLOR_RED     "\x1b[31m"
-#define ANSI_COLOR_GREEN   "\x1b[32m"
-#define ANSI_COLOR_YELLOW  "\x1b[33m"
-#define ANSI_COLOR_BLUE    "\x1b[34m"
-#define ANSI_COLOR_MAGENTA "\x1b[35m"
-#define ANSI_COLOR_CYAN    "\x1b[36m"
-#define ANSI_COLOR_RESET   "\x1b[0m"
 
 void *get_in_addr(struct sockaddr *sa);
 
@@ -93,7 +85,7 @@ public:
     LDPPacket();
 
 
-    LDPPacket(char *data, size_t n);
+    LDPPacket(const char *data, size_t n);
 
     /**
      *
@@ -110,21 +102,47 @@ public:
     static LDPPacket decode(void *data, size_t n);
 
 
-
     static uint16_t calculateChecksum(void *data, size_t n);
 };
 
 class LDP {
 public:
-    void ldpSend(std::string);
+    std::string chateeIP;
+    std::string chateePort;
+    std::string myPort;
+    struct sockaddr chateeSockaddr;
+    /**
+     * client starts the connection
+     */
+    bool isClient;
+    int sockfd;
 
-    void udtSend(LDPPacket &packet);
+    LDP(const std::string &chateeIp, const std::string &chateePort, const std::string &myPort, bool isClient);
+
+    LDP(const std::string &myPort, bool isClient);
+
+    /**
+     * also computes myAddrInfo
+     * @return
+     */
+    int createAndBindSocket();
+
+    int computeChateeAddrInfo();
+
+    void send(std::string &message);
+
+    void udpSend(LDPPacket &packet);
 
     LDPPacket makePkt(void *data, size_t n);
 
-    LDPPacket ldpRcv();
+    /**
+     *
+     * @return may receive corrupted packet with obj.isCorrupted=1
+     */
+    LDPPacket receive();
 
     std::string deliverData();
+
 
 
 };
@@ -133,17 +151,11 @@ class Chatter {
 private:
     bool isListening;
 public:
+    LDP ldp;
     bool getIsListening();
-
     void setIsListening(bool isListening);
 
-
-    std::string chateeIP;
-    std::string chateePort;
-    std::string myPort;
-    struct sockaddr chateeSockaddr;
     bool isClient;
-    int sockfd;
     pthread_mutex_t ioLock;
     pthread_mutex_t isListeningLock;
 
@@ -155,19 +167,9 @@ public:
 
     int destroyMutexes();
 
-    /**
-     * also computes myAddrInfo
-     * @return
-     */
-    int createAndBindSocket();
-
-    int computeChateeAddrInfo();
-
     void initiateChat();
 
-    std::string getInput();
-
-    int sendMessage(std::string message);
+    void sendMessage(std::string message);
 
     std::string receiveMessage();
 

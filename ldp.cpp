@@ -10,6 +10,8 @@
  * Bismillahirrahmanirrahim.
  */
 
+// todo: turkce karakterler s1k1nt1l1 cunku galiba utf-8 oldugu icin birden fazla baytli
+
 #include "ldp.h"
 
 
@@ -80,174 +82,56 @@ void *get_in_addr(struct sockaddr *sa) {
     return &(((struct sockaddr_in6 *) sa)->sin6_addr);
 }
 
-
-int Chatter::createAndBindSocket() {
-    struct addrinfo hints;
-    memset(&hints, 0, sizeof hints);
-    hints.ai_family = AF_INET;  // use IPv4 or IPv6, whichever
-    hints.ai_socktype = SOCK_DGRAM;
-    hints.ai_flags = AI_PASSIVE;     // fill in my IP for me
-
-    struct addrinfo *myAddrInfoPtr;
-    int rv;
-    if ((rv = getaddrinfo(NULL, myPort.c_str(), &hints, &myAddrInfoPtr)) != 0) {
-        fprintf(stderr, "getaddrinfo: %s\n", gai_strerror(rv));
-    }
-
-    struct addrinfo *p;
-    // loop through all the results and bind to the first we can
-    for (p = myAddrInfoPtr; p != NULL; p = p->ai_next) {
-        if ((sockfd = socket(p->ai_family, p->ai_socktype,
-                             p->ai_protocol)) == -1) {
-            perror("chatter: socket");
-            continue;
-        }
-
-        if (bind(sockfd, p->ai_addr, p->ai_addrlen) == -1) {
-            close(sockfd);
-            perror("chatter: bind");
-            continue;
-        }
-
-        break;
-    }
-    if (p == NULL) {
-        fprintf(stderr, "talker: failed to bind socket\n");
-        return 2;
-    }
-    freeaddrinfo(myAddrInfoPtr);
-    return 0;
-}
-
-
-int Chatter::computeChateeAddrInfo() {
-    if (isClient) {
-        struct addrinfo hints, *chateeAddrInfoPtr;
-        memset(&hints, 0, sizeof hints);
-        hints.ai_family = AF_INET; // set to AF_INET to use IPv4
-        hints.ai_socktype = SOCK_DGRAM;
-
-        // rv is return value here and it returns code (error code or 0)
-        int rv;
-        if ((rv = getaddrinfo(chateeIP.c_str(), chateePort.c_str(), &hints, &chateeAddrInfoPtr)) != 0) {
-            fprintf(stderr, "getaddrinfo: %s\n", gai_strerror(rv));
-            return 1;
-        }
-        struct addrinfo *p;
-        // loop through all the results and make a socket
-        for (p = chateeAddrInfoPtr; p != NULL; p = p->ai_next) {
-            if (false) {
-                // todo: i don't know at what condition would a wrong IP address would come
-            } else {
-                break;
-            }
-        }
-        if (p == NULL) {
-            fprintf(stderr, "talker: failed to getaddrinfo chatee address\n");
-            return 2;
-        }
-        chateeSockaddr = *(chateeAddrInfoPtr->ai_addr);
-        freeaddrinfo(chateeAddrInfoPtr);
-    } else {
-        // client and server also compute it when receiveMessage is called.
-    }
-    return 0;
-}
-
-int Chatter::sendMessage(std::string message) {
-    char messageArr[MAXBUFLEN];
-    for (int i = 0; i < message.length(); ++i) {
-        messageArr[i] = message[i];
-    }
-    LDPPacket packet(messageArr, message.length());
-
-    char encodedMessage[LDP_PACKET_SIZE];
-    packet.encode(encodedMessage);
-
-    int numbytes;
-    if ((numbytes = sendto(sockfd, encodedMessage, LDP_PACKET_SIZE, 0,
-                           &chateeSockaddr, sizeof(chateeSockaddr))) == -1) {
-        perror("talker: sendto");
-        exit(1);
-    }
-
-    return numbytes;
+void Chatter::sendMessage(std::string message) {
+    ldp.send(message);
 }
 
 
 std::string Chatter::receiveMessage() {
-    // it is originally writen to be ipv4-ipv6 agnostic but I don't want to change it to ipv4
-    struct sockaddr_storage their_addr;
-    socklen_t addr_len;
-    char buf[MAXBUFLEN];
-
-
-    addr_len = sizeof their_addr;
-    int numbytes;
-    if ((numbytes = recvfrom(sockfd, buf, MAXBUFLEN - 1, 0,
-                             (struct sockaddr *) &their_addr, &addr_len)) == -1) {
-        perror("recvfrom");
-        exit(1);
-    }
-
-
-    /**
-     * computeChateeAddrInfo else part
-     */
-    chateeSockaddr = *((struct sockaddr *) &their_addr);
-    char s[INET6_ADDRSTRLEN];
-    std::string sender = inet_ntop(their_addr.ss_family,
-                                   get_in_addr((struct sockaddr *) &their_addr),
-                                   s, sizeof s);
-    buf[numbytes] = '\0';
-
-    LDPPacket packet = LDPPacket::decode(buf, 8);
-    std::string returnval;
-    if (packet.isCorrupted) {
-        returnval = "(corrupted string): ";
-    }
-    returnval += std::string(packet.payload);
-    return returnval;
+    return ldp.deliverData();
 }
 
+
 Chatter::Chatter(const std::string &chateeIp, const std::string &chateePort, const std::string &myPort, bool isClient)
-        : chateeIP(chateeIp), chateePort(chateePort), myPort(myPort), isClient(isClient) {
+        : isClient(isClient), ldp(chateeIp, chateePort, myPort, isClient) {
     // client
     initializeMutexes();
-    createAndBindSocket();
-    computeChateeAddrInfo();
+    ldp.createAndBindSocket();
+    ldp.computeChateeAddrInfo();
 
     setIsListening(true);
     pthread_t listenerThreadID;
     pthread_create(&listenerThreadID, NULL, &Chatter::listenerHelper, this);
 
     while (getIsListening()) {
-        sendMessage(getInput());
+        char message[MAXBUFLEN];
+        fgets(message, MAXBUFLEN, stdin);
+        sendMessage(message);
     }
 
     pthread_join(listenerThreadID, NULL);
     destroyMutexes();
-    close(sockfd);
-
 }
 
-Chatter::Chatter(const std::string &myPort, bool isClient) : myPort(myPort), isClient(isClient) {
+Chatter::Chatter(const std::string &myPort, bool isClient) : isClient(isClient), ldp(myPort, isClient) {
     // server
     initializeMutexes();
-    createAndBindSocket();
-    std::string message = receiveMessage();
-    printf(ANSI_COLOR_YELLOW "CONNECTION ESTABLISHED. \nchatee: %s" ANSI_COLOR_RESET "\n", message.c_str());
+    ldp.createAndBindSocket();
+
+    std::string connectionStartedMessage = receiveMessage();
+    printf("CONNECTION ESTABLISHED. \nchatee: %s\n", connectionStartedMessage.c_str());
 
     setIsListening(true);
     pthread_t listenerThreadID;
     pthread_create(&listenerThreadID, NULL, &Chatter::listenerHelper, this);
 
     while (getIsListening()) {
-        sendMessage(getInput());
+        char message[MAXBUFLEN];
+        fgets(message, MAXBUFLEN, stdin);
+        sendMessage(message);
     }
 
     destroyMutexes();
-    close(sockfd);
 }
 
 void Chatter::initiateChat() {
@@ -266,7 +150,7 @@ void *Chatter::listener() {
     std::string message;
     do {
         message = receiveMessage();
-        printf(ANSI_COLOR_YELLOW "chatee: %s" ANSI_COLOR_RESET "\n", message.c_str());
+        printf("chatee: %s\n", message.c_str());
     } while (message != "BYE\n");
     endChat();
     return NULL;
@@ -309,16 +193,6 @@ int Chatter::destroyMutexes() {
     return 0;
 }
 
-std::string Chatter::getInput() {
-    // todo: nonblocking io yapman lazim. bunlara mutex yapinca yazarken gelen mesajlar gozukmuyor. yapmayinca s1k1nt1 olabilir.
-    char message[MAXBUFLEN];
-    printf(ANSI_COLOR_GREEN);
-    fgets(message, MAXBUFLEN, stdin);
-    printf(ANSI_COLOR_RESET);
-
-    return message;
-}
-
 /**
  * source: https://cse.usf.edu/~kchriste/tools/checksum.c
  */
@@ -357,7 +231,7 @@ LDPPacket LDPPacket::decode(void *data, size_t n) {
 
     data = deserialize_char_array(data, packet.payload, 8);
 
-    packet.isCorrupted = packet.checksum != calculateChecksum(((int16_t*)startOfDataPtr)+1, LDP_PACKET_SIZE-2);
+    packet.isCorrupted = packet.checksum != calculateChecksum(((int16_t *) startOfDataPtr) + 1, LDP_PACKET_SIZE - 2);
     return packet;
 }
 
@@ -374,7 +248,7 @@ size_t LDPPacket::encode(void *data) {
     return LDP_PACKET_SIZE;
 }
 
-LDPPacket::LDPPacket(char *message, size_t n) : isCorrupted(false) {
+LDPPacket::LDPPacket(const char *message, size_t n) : isCorrupted(false) {
     int i;
     for (i = 0; i < 8 && i < n; ++i) {
         payload[i] = message[i];
@@ -383,3 +257,157 @@ LDPPacket::LDPPacket(char *message, size_t n) : isCorrupted(false) {
         payload[i] = '\0';
     }
 }
+
+int LDP::createAndBindSocket() {
+    struct addrinfo hints;
+    memset(&hints, 0, sizeof hints);
+    hints.ai_family = AF_INET;  // use IPv4 or IPv6, whichever
+    hints.ai_socktype = SOCK_DGRAM;
+    hints.ai_flags = AI_PASSIVE;     // fill in my IP for me
+
+    struct addrinfo *myAddrInfoPtr;
+    int rv;
+    if ((rv = getaddrinfo(NULL, myPort.c_str(), &hints, &myAddrInfoPtr)) != 0) {
+        fprintf(stderr, "getaddrinfo: %s\n", gai_strerror(rv));
+    }
+
+    struct addrinfo *p;
+    // loop through all the results and bind to the first we can
+    for (p = myAddrInfoPtr; p != NULL; p = p->ai_next) {
+        if ((sockfd = socket(p->ai_family, p->ai_socktype,
+                             p->ai_protocol)) == -1) {
+            perror("chatter: socket");
+            continue;
+        }
+
+        if (bind(sockfd, p->ai_addr, p->ai_addrlen) == -1) {
+            close(sockfd);
+            perror("chatter: bind");
+            continue;
+        }
+
+        break;
+    }
+    if (p == NULL) {
+        fprintf(stderr, "talker: failed to bind socket\n");
+        return 2;
+    }
+    freeaddrinfo(myAddrInfoPtr);
+    return 0;
+}
+
+int LDP::computeChateeAddrInfo() {
+    if (isClient) {
+        struct addrinfo hints, *chateeAddrInfoPtr;
+        memset(&hints, 0, sizeof hints);
+        hints.ai_family = AF_INET; // set to AF_INET to use IPv4
+        hints.ai_socktype = SOCK_DGRAM;
+
+        // rv is return value here and it returns code (error code or 0)
+        int rv;
+        if ((rv = getaddrinfo(chateeIP.c_str(), chateePort.c_str(), &hints, &chateeAddrInfoPtr)) != 0) {
+            fprintf(stderr, "getaddrinfo: %s\n", gai_strerror(rv));
+            return 1;
+        }
+        struct addrinfo *p;
+        // loop through all the results and make a socket
+        for (p = chateeAddrInfoPtr; p != NULL; p = p->ai_next) {
+            if (false) {
+                // todo: i don't know at what condition would a wrong IP address would come
+            } else {
+                break;
+            }
+        }
+        if (p == NULL) {
+            fprintf(stderr, "talker: failed to getaddrinfo chatee address\n");
+            return 2;
+        }
+        chateeSockaddr = *(chateeAddrInfoPtr->ai_addr);
+        freeaddrinfo(chateeAddrInfoPtr);
+    } else {
+        // client and server also compute it when receiveMessage is called.
+    }
+    return 0;
+}
+
+LDP::LDP(const std::string &chateeIp, const std::string &chateePort, const std::string &myPort, bool isClient)
+        : chateeIP(chateeIp), chateePort(chateePort), myPort(myPort), isClient(isClient) {
+    // client
+
+
+    // TODO: chat bitince yapilsin bu baska yerde
+    /*close(sockfd);*/
+
+}
+
+LDP::LDP(const std::string &myPort, bool isClient) : myPort(myPort), isClient(isClient) {
+    // server
+
+}
+
+
+std::string LDP::deliverData() {
+    // it is originally writen to be ipv4-ipv6 agnostic but I don't want to change it to ipv4
+
+    LDPPacket packet = receive();
+    std::string returnval;
+    if (packet.isCorrupted) {
+        returnval = "(corrupted string): ";
+    }
+    returnval += std::string(packet.payload);
+    return returnval;
+}
+
+LDPPacket LDP::receive() {
+    struct sockaddr_storage their_addr;
+    socklen_t addr_len;
+    unsigned char buf[LDP_PACKET_SIZE];
+
+
+    addr_len = sizeof their_addr;
+    int numbytes;
+    if ((numbytes = recvfrom(sockfd, buf, LDP_PACKET_SIZE, 0,
+                             (struct sockaddr *) &their_addr, &addr_len)) == -1) {
+        perror("recvfrom");
+        exit(1);
+    }
+
+    // todo: maybe should check if it is the same person sending the mesages. also no need for this at all for client.
+    chateeSockaddr = *((struct sockaddr *) &their_addr);
+    char s[INET6_ADDRSTRLEN];
+    std::string sender = inet_ntop(their_addr.ss_family,
+                                   get_in_addr((struct sockaddr *) &their_addr),
+                                   s, sizeof s);
+    return LDPPacket::decode(buf, 8);
+}
+
+void LDP::send(std::string &message) {
+    std::vector<LDPPacket> packets;
+    /**
+     * I need my last packet to be null terminated and
+     * the c_str pointer ensures that the string is null terminated.
+     * The +1's are also for this reason there.
+     */
+    const char *messagePtr = message.c_str();
+    for (int i = 0; i < message.length() + 1; i += 8) {
+        // Note: no need to limit n to 8 because the constructor reads 8 bytes maximum.
+        packets.push_back(LDPPacket(messagePtr + i, message.length() - i + 1));
+
+    }
+    for (int i = 0; i < packets.size(); ++i) {
+        udpSend(packets[i]);
+    }
+}
+
+void LDP::udpSend(LDPPacket &packet) {
+    char encodedMessage[LDP_PACKET_SIZE];
+    packet.encode(encodedMessage);
+
+    int numbytes;
+    if ((numbytes = sendto(sockfd, encodedMessage, LDP_PACKET_SIZE, 0,
+                           &chateeSockaddr, sizeof(chateeSockaddr))) == -1) {
+        perror("talker: sendto");
+        exit(1);
+    }
+}
+
