@@ -16,7 +16,14 @@
     </configurations>
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="6c32ae89-926d-4d8a-9c14-ab01e47c954f" name="Changes" comment="sınıflara güçler ayrılığı ilkesini nakşettim. sırada gönderme penceresi ve ack ve timeout kaldı." />
+    <list default="true" id="6c32ae89-926d-4d8a-9c14-ab01e47c954f" name="Changes" comment="sınıflara güçler ayrılığı ilkesini nakşettim. sırada gönderme penceresi ve ack ve timeout kaldı.">
+      <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/client" beforeDir="false" afterPath="$PROJECT_DIR$/client" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/ldp.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/ldp.cpp" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/ldp.h" beforeDir="false" afterPath="$PROJECT_DIR$/ldp.h" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/server" beforeDir="false" afterPath="$PROJECT_DIR$/server" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/server.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/server.cpp" afterDir="false" />
+    </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
     <option name="HIGHLIGHT_NON_ACTIVE_CHANGELIST" value="false" />
@@ -99,7 +106,7 @@
     <property name="run.code.analysis.last.selected.profile" value="pProject Default" />
     <property name="settings.editor.selected.configurable" value="preferences.sourceCode.C/C++" />
   </component>
-  <component name="RunManager" selected="Makefile Application.server">
+  <component name="RunManager" selected="Makefile Application.client">
     <configuration name="all" type="CLionNativeAppRunConfigurationType" REDIRECT_INPUT="false" ELEVATE="false" USE_EXTERNAL_CONSOLE="false" PASS_PARENT_ENVS_2="true" PROJECT_NAME="the2" TARGET_NAME="all" CONFIG_NAME="all" version="1">
       <method v="2">
         <option name="CLION.COMPOUND.BUILD" enabled="true" />
@@ -137,9 +144,9 @@
       <item itemvalue="Makefile Application.all" />
       <item itemvalue="Makefile Application.client" />
       <item itemvalue="Makefile Application.server" />
-      <item itemvalue="Makefile Target.server" />
-      <item itemvalue="Makefile Target.client" />
       <item itemvalue="Makefile Target.all" />
+      <item itemvalue="Makefile Target.client" />
+      <item itemvalue="Makefile Target.server" />
     </list>
     <recent_temporary>
       <list>
@@ -159,7 +166,8 @@
       <updated>1640522741520</updated>
       <workItem from="1640522743160" duration="27470000" />
       <workItem from="1640553004573" duration="952000" />
-      <workItem from="1640588552515" duration="27484000" />
+      <workItem from="1640588552515" duration="28394000" />
+      <workItem from="1640708230106" duration="23902000" />
     </task>
     <task id="LOCAL-00001" summary="client kismini nesne yonelimli seye gecirdim ve soket programlama hakkındaki ufkum birkaç metre genişledi.">
       <created>1640533402963</created>
@@ -196,7 +204,14 @@
       <option name="project" value="LOCAL" />
       <updated>1640627092260</updated>
     </task>
-    <option name="localTasksCounter" value="6" />
+    <task id="LOCAL-00006" summary="sınıflara güçler ayrılığı ilkesini nakşettim. sırada gönderme penceresi ve ack ve timeout kaldı.">
+      <created>1640627425727</created>
+      <option name="number" value="00006" />
+      <option name="presentableId" value="LOCAL-00006" />
+      <option name="project" value="LOCAL" />
+      <updated>1640627425727</updated>
+    </task>
+    <option name="localTasksCounter" value="7" />
     <servers />
   </component>
   <component name="TypeScriptGeneratedFilesManager">
@@ -221,16 +236,5 @@
     <MESSAGE value="checksum ve serializasyon (structu parçalayıp gönderip geri birleştirme) bitti. şimdi hatalı mesajı anlıyoruz. sırada soket kurma falan kısmını LDP sınıfına taşıma kaldı. chatterde sadece yüksek seviye fonksyionlar olsun. ldp'de olsun güvenilir veri transfer protokolü kısmı. paket kısmı da ldp packette." />
     <MESSAGE value="sınıflara güçler ayrılığı ilkesini nakşettim. sırada gönderme penceresi ve ack ve timeout kaldı." />
     <option name="LAST_COMMIT_MESSAGE" value="sınıflara güçler ayrılığı ilkesini nakşettim. sırada gönderme penceresi ve ack ve timeout kaldı." />
-  </component>
-  <component name="XDebuggerManager">
-    <breakpoint-manager>
-      <breakpoints>
-        <line-breakpoint enabled="true" type="com.jetbrains.cidr.execution.debugger.OCBreakpointType">
-          <url>file://$PROJECT_DIR$/ldp.cpp</url>
-          <line>90</line>
-          <option name="timeStamp" value="24" />
-        </line-breakpoint>
-      </breakpoints>
-    </breakpoint-manager>
   </component>
 </project>
