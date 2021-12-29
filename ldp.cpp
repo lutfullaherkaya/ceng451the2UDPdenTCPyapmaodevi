@@ -18,6 +18,12 @@
 
 #pragma clang diagnostic push
 #pragma ide diagnostic ignored "EndlessLoop"
+
+long getTimeDifferenceMs(timespec start, timespec end) {
+    return ((long) end.tv_sec - (long) start.tv_sec) * 1000 + ((long) end.tv_nsec - (long) start.tv_nsec) / 1000000;
+}
+
+
 void *serialize_uint32_t(void *buffer, uint32_t value) {
     *((uint32_t *) buffer) = htonl(value);
     return ((uint32_t *) buffer) + 1;
@@ -100,11 +106,6 @@ void Chatter::sendMessage(std::string message) {
 }
 
 
-std::string Chatter::receiveMessage() {
-    return ldp.deliverData();
-}
-
-
 Chatter::Chatter(const std::string &chateeIp, const std::string &chateePort, const std::string &myPort, bool isClient)
         : isClient(isClient), ldp(chateeIp, chateePort, myPort, isClient) {
     // client
@@ -148,7 +149,6 @@ void Chatter::endChat() {
 
     printf("The Chat has been terminated.\n");
 }
-
 
 
 bool Chatter::getIsListening() {
@@ -260,21 +260,60 @@ size_t LDPPacket::encode(void *data) {
     return LDP_PACKET_SIZE;
 }
 
-LDPPacket::LDPPacket(const char *message, size_t n) : isCorrupted(false) {
+
+LDPPacket::LDPPacket(const LDPPacket &p1) {
+    checksum = p1.checksum;
+    isAck = p1.isAck;
+    isSeq = p1.isSeq;
+    isTheLastPacketOfTheMessage = p1.isTheLastPacketOfTheMessage;
+    seqNumber = p1.seqNumber;
+    ackNumber = p1.ackNumber;
+    for (int i = 0; i < 8; ++i) {
+        payload[i] = p1.payload[i];
+    }
+    isCorrupted = p1.isCorrupted;
+}
+
+LDPPacket::LDPPacket(const char *data, size_t n, bool isAck, bool isSeq, bool isTheLastPacketOfTheMessage,
+                     uint16_t seqNumber, uint16_t ackNumber)
+        : isAck(isAck), isSeq(isSeq), isTheLastPacketOfTheMessage(isTheLastPacketOfTheMessage), seqNumber(seqNumber),
+          ackNumber(ackNumber) {
     int i;
     for (i = 0; i < 8 && i < n; ++i) {
-        payload[i] = message[i];
+        payload[i] = data[i];
     }
-    if (i < 8) {
+    for (; i < 8; ++i) {
         payload[i] = '\0';
     }
-    // todo: sil
-    isAck = true;
-    isTheLastPacketOfTheMessage = false;
-    isSeq = true;
-    seqNumber = 123;
-    ackNumber = 789;
 }
+
+
+LDPPacket::LDPPacket(bool isAck, bool isSeq, bool isTheLastPacketOfTheMessage, uint16_t seqNumber, uint16_t ackNumber)
+        : isAck(isAck), isSeq(isSeq), isTheLastPacketOfTheMessage(isTheLastPacketOfTheMessage), seqNumber(seqNumber),
+          ackNumber(ackNumber) {
+    int i;
+    for (i = 0; i < 8; ++i) {
+        payload[i] = 0;
+    }
+}
+
+
+std::string LDPPacket::payloadToString() {
+    std::string str;
+    for (int i = 0; i < 8; ++i) {
+        if (payload[i]) {
+            str += payload[i];
+        }
+    }
+    return str;
+}
+
+void LDPPacket::print(bool sending) {
+    fprintf(stderr, "%s {isAck:%d, isSeq:%d, isLast:%d, ackNum:%d, seqNum:%d}\n",
+            (sending ? "sending:   " : "receiving: "), isAck, isSeq,
+            isTheLastPacketOfTheMessage, ackNumber, seqNumber);
+}
+
 
 int LDP::createAndBindSocket() {
     struct addrinfo hints;
@@ -355,30 +394,13 @@ int LDP::computeChateeAddrInfo() {
 LDP::LDP(const std::string &chateeIp, const std::string &chateePort, const std::string &myPort, bool isClient)
         : chateeIP(chateeIp), chateePort(chateePort), myPort(myPort), isClient(isClient) {
     // client
-    initializeThreadMhreadEtcMtc();
 
 }
 
 LDP::LDP(const std::string &myPort, bool isClient) : myPort(myPort), isClient(isClient) {
     // server
-    initializeThreadMhreadEtcMtc();
 }
 
-
-std::string LDP::deliverData() {
-    std::string message;
-
-    sem_wait(&receivedMessageQueueFullSlotCount);
-    pthread_mutex_lock(&receivedMessageQueueMutex);
-
-    message = receivedMessageQueue.front();
-    receivedMessageQueue.pop();
-
-    pthread_mutex_unlock(&receivedMessageQueueMutex);
-    sem_post(&receivedMessageQueueEmptySlotCount);
-
-    return message;
-}
 
 LDPPacket LDP::udpReceive() {
     struct sockaddr_storage their_addr;
@@ -403,7 +425,7 @@ LDPPacket LDP::udpReceive() {
 }
 
 /**
- * senderWindow producer
+ * packetsToBeSent producer
  *
  * Important note: pushing directly to the window deque unneccesarily makes the window busy.
  * Instead I should keep the packets in line on another queue, and when window deque gets low in packets,
@@ -426,15 +448,16 @@ void LDP::send(std::string &message) {
      * nope, it is not my problem. they should have made a better asynchronization algorithm if this is inefficient.
      */
     for (int i = 0; i < message.length() + 1; i += 8) {
-        sem_wait(&senderWindowEmptySlotCount);
-        pthread_mutex_lock(&senderWindowMutex);
+        sem_wait(&packetsToBeSentEmptySlotCount);
+        pthread_mutex_lock(&packetsToBeSentMutex);
 
+        bool isTheLast = i + 8 > message.length();
         // Note: no need to limit n to 8 because the constructor reads 8 bytes maximum.
-        senderWindow.emplace_back(messagePtr + i, message.length() - i + 1);
+        packetsToBeSent.emplace(messagePtr + i, message.length() - i + 1, false, true, isTheLast, 0, 0);
 
-        pthread_mutex_unlock(&senderWindowMutex);
+        pthread_mutex_unlock(&packetsToBeSentMutex);
         // it increments full slot count
-        sem_post(&senderWindowFullSlotCount);
+        sem_post(&packetsToBeSentFullSlotCount);
     }
 }
 
@@ -442,6 +465,7 @@ void LDP::udpSend(LDPPacket &packet) {
     char encodedMessage[LDP_PACKET_SIZE];
     packet.encode(encodedMessage);
 
+    packet.print(true);
     ssize_t numbytes = sendto(sockfd, encodedMessage, LDP_PACKET_SIZE, 0, &chateeSockaddr, sizeof(chateeSockaddr));
     if (numbytes == -1) {
         perror("talker: sendto");
@@ -454,26 +478,24 @@ void *LDP::ldpPacketReceiverHelper(void *context) {
 }
 
 void *LDP::ldpPacketReceiver() {
-    while (getIsListening()) {
+    while (true) {
         LDPPacket packet = udpReceive();
         if (!packet.isCorrupted) {
-            // It is saying wait until emptySlotCount is non-zero
-            sem_wait(&receivedMessageQueueEmptySlotCount);
-            pthread_mutex_lock(&receivedMessageQueueMutex);
-
-            std::string message;
-            for (int i = 0; i < 8; ++i) {
-                message += packet.payload[i];
+            packet.print(false);
+            if (packet.isAck) {
+                fprintf(stderr, "Received ACK%d.\n", packet.ackNumber);
+                ackAndSlideSenderWindow(packet.ackNumber);
             }
-            // todo: buraya degil de pencereye pushlayacak.
-            receivedMessageQueue.push(message);
+            if (packet.isSeq) {
+                LDPPacket ackPacket(true, false, false, 0,
+                                    packet.seqNumber);
+                udpSend(ackPacket);
+                /*todo: direkt burada gonderilecek paketler kuyruguna bakip yoksa 1 ms bekleyip ack ile birlikte gonder.*/
 
-            pthread_mutex_unlock(&receivedMessageQueueMutex);
-            // it increments full slot count
-            sem_post(&receivedMessageQueueFullSlotCount);
-
+                receiveAndSlideReceiverWindow(packet);
+            }
         } else {
-            printf("corruption\n");
+            fprintf(stderr, "Received and dropped garbled packet. \n");
         }
 
     }
@@ -486,14 +508,104 @@ void *LDP::ldpPacketSenderHelper(void *context) {
 
 void *LDP::ldpPacketSender() {
     while (true) {
-        sem_wait(&senderWindowFullSlotCount);
+        LDPPacketInWindow packet;
+        LDPPacketInWindow *packetPtr;
+
+        // consume packetsToBeSent
+        sem_wait(&packetsToBeSentFullSlotCount);
+        pthread_mutex_lock(&packetsToBeSentMutex);
+
+        packet.make(packetsToBeSent.front(), false, 0);
+        packetsToBeSent.pop();
+
+
+        pthread_mutex_unlock(&packetsToBeSentMutex);
+        sem_post(&packetsToBeSentEmptySlotCount);
+
+        // produce senderWindow and send packet
+        sem_wait(&senderWindowEmptySlotCount);
         pthread_mutex_lock(&senderWindowMutex);
 
-        udpSend(senderWindow.front());
-        senderWindow.pop_front();
+
+        if (packet.packet->isSeq) {
+            packet.packet->seqNumber = ++seqNumOfTheLastPacketInSenderWind;
+        }
+
+        udpSend(*(packet.packet));
+        senderWindow.emplace_back();
+        senderWindow.back().shallowSwap(packet);
+        packetPtr = &(senderWindow.back());
 
         pthread_mutex_unlock(&senderWindowMutex);
-        sem_post(&senderWindowEmptySlotCount);
+        sem_post(&senderWindowFullSlotCount);
+
+        // produce sentPacketTimeouts
+        sem_wait(&sentPacketTimeoutsEmptySlotCount);
+        pthread_mutex_lock(&sentPacketTimeoutsMutex);
+
+        struct timespec spec;
+        clock_gettime(CLOCK_MONOTONIC, &spec);
+
+        sentPacketTimeouts.push_back(PacketAndItsTimeout(packetPtr, spec));
+
+        pthread_mutex_unlock(&sentPacketTimeoutsMutex);
+        sem_post(&sentPacketTimeoutsFullSlotCount);
+
+    }
+    return NULL;
+}
+
+void *LDP::ldpPacketRetransmitterHelper(void *context) {
+    return ((LDP *) context)->ldpPacketRetransmitter();
+}
+
+void *LDP::ldpPacketRetransmitter() {
+    while (true) {
+        fprintf(stderr,"TRANSMITTERLOOP.");
+        printSentPacketTimeouts();
+        fprintf(stderr, "\n");
+
+        sem_wait(&sentPacketTimeoutsFullSlotCount);
+        pthread_mutex_lock(&sentPacketTimeoutsMutex);
+
+        struct timespec spec;
+        clock_gettime(CLOCK_MONOTONIC, &spec);
+
+        long sleepDuration = sentPacketTimeouts.front().timeUntilTimeout();
+
+
+        pthread_mutex_unlock(&sentPacketTimeoutsMutex);
+        sem_post(&sentPacketTimeoutsFullSlotCount);
+
+        printSentPacketTimeouts();
+
+        fprintf(stderr, "retransmitter Sleep(%ldms)\n", sleepDuration);
+        if (sleepDuration > 0) {
+            if (sleepDuration >= 1000)
+                sleep(sleepDuration / 1000);
+            usleep((sleepDuration % 1000) * 1000);
+        }
+
+        pthread_mutex_lock(&sentPacketTimeoutsMutex);
+        if (!(sentPacketTimeouts.empty())) {
+            PacketAndItsTimeout pAndTimeout = sentPacketTimeouts.front();
+            clock_gettime(CLOCK_MONOTONIC, &spec);
+
+
+            printf("TIME UNTIL TIMEOUT: %ld\n", pAndTimeout.timeUntilTimeout());
+            if (pAndTimeout.timeUntilTimeout() <= 0) {
+                LDPPacket &packet = *(pAndTimeout.packet->packet);
+                fprintf(stderr, "Retransmitting: %s\n", (packet.payloadToString()).c_str());
+
+                udpSend(packet);
+                sentPacketTimeouts.pop_front();
+                clock_gettime(CLOCK_MONOTONIC, &spec);
+
+                sentPacketTimeouts.push_back(PacketAndItsTimeout(pAndTimeout.packet, spec));
+            }
+        }
+        pthread_mutex_unlock(&sentPacketTimeoutsMutex);
+
     }
     return NULL;
 }
@@ -507,32 +619,67 @@ void LDP::setIsListening(bool isListening1) {
 }
 
 void LDP::initializeThreadMhreadEtcMtc() {
-    pthread_mutex_init(&receivedMessageQueueMutex, NULL);
+    /*pthread_mutex_init(&receivedMessageQueueMutex, NULL);
     sem_init(&receivedMessageQueueEmptySlotCount, 0, MAX_REC_MESSAGE_Q_SIZE);
-    sem_init(&receivedMessageQueueFullSlotCount, 0, 0);
+    sem_init(&receivedMessageQueueFullSlotCount, 0, 0);*/
 
-    pthread_mutex_init(&senderWindowMutex, NULL);
-    sem_init(&senderWindowEmptySlotCount, 0, WINDOW_CONTAINER_MAX_SIZE);
-    sem_init(&senderWindowFullSlotCount, 0, 0);
+    pthread_mutex_init(&packetsToBeSentMutex, NULL);
+    sem_init(&packetsToBeSentEmptySlotCount, 0, PACKETS_TO_BE_SENT_Q_SIZE);
+    sem_init(&packetsToBeSentFullSlotCount, 0, 0);
 
     pthread_mutex_init(&receiverWindowMutex, NULL);
-    sem_init(&receiverWindowEmptySlotCount, 0, WINDOW_CONTAINER_MAX_SIZE);
+    sem_init(&receiverWindowEmptySlotCount, 0, RECEIVER_WINDOW_SIZE);
     sem_init(&receiverWindowFullSlotCount, 0, 0);
+    seqNumOfTheLastPacketInReceiverWind = 0;
+    for (int i = 0; i < RECEIVER_WINDOW_SIZE; ++i) {
+        seqNumOfTheLastPacketInReceiverWind++;
+        receiverWindow.emplace_back(seqNumOfTheLastPacketInReceiverWind);
+    }
+
+    pthread_mutex_init(&senderWindowMutex, NULL);
+    sem_init(&senderWindowEmptySlotCount, 0, SENDER_WINDOW_SIZE);
+    sem_init(&senderWindowFullSlotCount, 0, 0);
+    seqNumOfTheLastPacketInSenderWind = 0;
+
+    pthread_mutex_init(&packetsReceivedMutex, NULL);
+    sem_init(&packetsReceivedEmptySlotCount, 0, PACKETS_RECEIVED_Q_SIZE);
+    sem_init(&packetsReceivedFullSlotCount, 0, 0);
+
+    pthread_mutex_init(&sentPacketTimeoutsMutex, NULL);
+    sem_init(&sentPacketTimeoutsEmptySlotCount, 0, SENDER_WINDOW_SIZE + 4);
+    sem_init(&sentPacketTimeoutsFullSlotCount, 0, 0);
+
 
     pthread_t ldpPacketSenderThreadID;
     pthread_create(&ldpPacketSenderThreadID, NULL, &LDP::ldpPacketSenderHelper, this);
+
+    pthread_t ldpPacketRetransmitterThreadID;
+    pthread_create(&ldpPacketRetransmitterThreadID, NULL, &LDP::ldpPacketRetransmitterHelper, this);
 
 
 
     // TODO: chat bitince yapilsin bunlar baska yerde
     /*
-    pthread_mutex_destroy(&receiverWindowMutex);
-    sem_destroy(&receiverWindowEmptySlotCount);
-    sem_destroy(&receiverWindowFullSlotCount);
+
+    pthread_mutex_destroy(&sentPacketTimeoutsMutex);
+    sem_destroy(&sentPacketTimeoutsEmptySlotCount);
+    sem_destroy(&sentPacketTimeoutsFullSlotCount);
+
+    pthread_mutex_destroy(&packetsReceivedMutex);
+    sem_destroy(&packetsReceivedEmptySlotCount);
+    sem_destroy(&packetsReceivedFullSlotCount);
 
     pthread_mutex_destroy(&senderWindowMutex);
     sem_destroy(&senderWindowEmptySlotCount);
     sem_destroy(&senderWindowFullSlotCount);
+
+    pthread_mutex_destroy(&receiverWindowMutex);
+    sem_destroy(&receiverWindowEmptySlotCount);
+    sem_destroy(&receiverWindowFullSlotCount);
+
+    pthread_mutex_destroy(&packetsToBeSentMutex);
+    sem_destroy(&packetsToBeSentEmptySlotCount);
+    sem_destroy(&packetsToBeSentFullSlotCount);
 
     pthread_mutex_destroy(&receivedMessageQueueMutex);
     sem_destroy(&receivedMessageQueueEmptySlotCount);
@@ -552,16 +699,97 @@ void LDP::listen(void *(*onMessageEventHandler)(void *, std::string &), void *ar
     pthread_t listenerThreadID;
     pthread_create(&listenerThreadID, NULL, &LDP::ldpPacketReceiverHelper, this);
 
-    pthread_t messageConsumerThreadID;
-    pthread_create(&messageConsumerThreadID, NULL, &LDP::messageConsumerHelper, this);
+    pthread_t messageProducerThreadID;
+    pthread_create(&messageProducerThreadID, NULL, &LDP::messageProducerHelper, this);
+
+    /*pthread_t messageConsumerThreadID;
+    pthread_create(&messageConsumerThreadID, NULL, &LDP::messageConsumerHelper, this);*/
 
 
     // todo: join and finish clean up threads
 }
 
-void *LDP::messageConsumer() {
+void *LDP::messageProducer() {
     while (true) {
-        std::string message = deliverData();
+        std::string message;
+        char *payload;
+        bool lastPacketOfTheMessageReceived = false;
+        while (!lastPacketOfTheMessageReceived) {
+            sem_wait(&packetsReceivedFullSlotCount);
+            pthread_mutex_lock(&packetsReceivedMutex);
+
+            LDPPacket &packet = packetsReceived.front();
+            message += packet.payloadToString();
+            lastPacketOfTheMessageReceived = packet.isTheLastPacketOfTheMessage;
+
+            packetsReceived.pop();
+
+            pthread_mutex_unlock(&packetsReceivedMutex);
+            sem_post(&packetsReceivedEmptySlotCount);
+        }
+        // todo: delete receivedMessageQueue since we immediately consume it.
+        (*onMessage)(onMessageArg, message);
+    }
+    return NULL;
+}
+
+void *LDP::messageProducerHelper(void *context) {
+    return ((LDP *) context)->messageProducer();
+}
+
+void LDP::ackAndSlideSenderWindow(uint16_t ackNum) {
+    sem_wait(&sentPacketTimeoutsFullSlotCount);
+    pthread_mutex_lock(&sentPacketTimeoutsMutex);
+
+    fprintf(stderr, "before and after deletion: \n");
+    printSentPacketTimeouts();
+    for (std::deque<PacketAndItsTimeout>::iterator it = sentPacketTimeouts.begin();
+         it != sentPacketTimeouts.end(); ++it) {
+        if (it->packet->packet->seqNumber == ackNum) {
+            sentPacketTimeouts.erase(it);
+            break;
+        }
+    }
+    printSentPacketTimeouts();
+
+    pthread_mutex_unlock(&sentPacketTimeoutsMutex);
+    sem_post(&sentPacketTimeoutsEmptySlotCount);
+
+    pthread_mutex_lock(&senderWindowMutex);
+    // ack
+    for (int i = 0; i < senderWindow.size(); ++i) {
+        if (senderWindow[i].packet->seqNumber == ackNum) {
+            senderWindow[i].isACKd = true;
+            break;
+        }
+    }
+    // slide
+    while (!senderWindow.empty()) {
+        if (senderWindow.front().isACKd) {
+            sem_wait(&senderWindowFullSlotCount);
+
+            // packet is deleted now.
+            senderWindow.pop_front();
+
+            sem_post(&senderWindowEmptySlotCount);
+        } else {
+            break;
+        }
+    }
+    pthread_mutex_unlock(&senderWindowMutex);
+}
+
+void *LDP::messageConsumer() {
+    std::string message;
+    while (true) {
+        sem_wait(&receivedMessageQueueFullSlotCount);
+        pthread_mutex_lock(&receivedMessageQueueMutex);
+
+        message = receivedMessageQueue.front();
+        receivedMessageQueue.pop();
+
+        pthread_mutex_unlock(&receivedMessageQueueMutex);
+        sem_post(&receivedMessageQueueEmptySlotCount);
         (*onMessage)(onMessageArg, message);
     }
 }
@@ -571,7 +799,153 @@ void *LDP::messageConsumerHelper(void *context) {
 }
 
 
+void LDP::receiveAndSlideReceiverWindow(LDPPacket &p) {
+    pthread_mutex_lock(&receiverWindowMutex);
+
+    // receive
+    /**
+     * If packet is expected but not yet received or acceptable within window
+     * note: receiverWindow will never be full because it is bounded by senderWindow
+     * and the receiverWindow is bigger than senderWindow, therefore this operation will not
+     * block the ldpPacketReceiver from taking acks. However receiverWindow is always full with
+     * null packets with expected sequence numbers.
+     */
+    for (int i = 0; i < receiverWindow.size(); ++i) {
+        if (receiverWindow[i].expectedSeqNumber == p.seqNumber) {
+            if (receiverWindow[i].isNull()) {
+                receiverWindow[i].make(p, true, receiverWindow[i].expectedSeqNumber);
+            } else {
+                fprintf(stderr, "duplicate payload: %s \n", p.payloadToString().c_str());
+            }
+
+            break;
+        }
+    }
+    // if loop finishes then the packet is duplicate from older windows.
+
+    // slide
+    while (!(receiverWindow.front().isNull())) {
+        sem_wait(&packetsReceivedEmptySlotCount);
+        pthread_mutex_lock(&packetsReceivedMutex);
+
+        packetsReceived.push(*(receiverWindow.front().packet));
+        receiverWindow.pop_front();
+        seqNumOfTheLastPacketInReceiverWind++;
+        receiverWindow.emplace_back(seqNumOfTheLastPacketInReceiverWind);
+
+        pthread_mutex_unlock(&packetsReceivedMutex);
+        sem_post(&packetsReceivedFullSlotCount);
+
+    }
+
+    pthread_mutex_unlock(&receiverWindowMutex);
+}
+
+void LDP::printSentPacketTimeouts() {
+    fprintf(stderr, "Sent Packet time until timeouts: [");
+    struct timespec spec;
+    clock_gettime(CLOCK_MONOTONIC, &spec);
+
+    for (int i = 0; i < sentPacketTimeouts.size(); ++i) {
+        long ms = sentPacketTimeouts[i].timeUntilTimeout();
+        fprintf(stderr, "(%ldms, seq:%d), ", ms, sentPacketTimeouts[i].packet->packet->seqNumber);
+    }
+    fprintf(stderr, "]\n ");
+
+}
+
+long LDP::getTimeUntilPacketTimeout(timespec packetSentTime) {
+    struct timespec spec;
+    clock_gettime(CLOCK_MONOTONIC, &spec);
+    return getTimeDifferenceMs(packetSentTime, spec) + TIMEOUT_DURATION_MS;
+}
 
 
-// todo: while true'leri gormezden geliyor bu. isin bitince while(true) leri duzeltmek icn bunu sil.
-#pragma clang diagnostic pop
+
+
+// todo: while true'leri gormezden geliyor bu. isin bitince while(true) leri du
+
+
+LDPPacketInWindow::LDPPacketInWindow(LDPPacket &p, bool isAck, uint16_t seqNumber = 0) : isACKd(isAck),
+                                                                                         expectedSeqNumber(seqNumber) {
+    packet = new LDPPacket(p);
+}
+
+LDPPacketInWindow::~LDPPacketInWindow() {
+    if (packet) {
+        delete packet;
+    }
+}
+
+
+LDPPacketInWindow *LDPPacketInWindow::make(LDPPacket &p, bool isAck, uint16_t seqNum) {
+    if (packet != NULL) {
+        delete packet;
+    }
+    packet = new LDPPacket(p);
+    isACKd = isAck;
+    expectedSeqNumber = seqNum;
+    return this;
+}
+
+LDPPacketInWindow::LDPPacketInWindow() {
+    packet = NULL;
+    isACKd = false;
+    expectedSeqNumber = 0;
+}
+
+LDPPacketInWindow::LDPPacketInWindow(uint16_t seqNum) {
+    packet = NULL;
+    isACKd = false;
+    expectedSeqNumber = seqNum;
+}
+
+void LDPPacketInWindow::shallowSwap(LDPPacketInWindow &p) {
+    LDPPacket *temp = p.packet;
+    p.packet = packet;
+    packet = temp;
+
+    bool tempAck = p.isACKd;
+    p.isACKd = tempAck;
+    isACKd = tempAck;
+
+    uint16_t tempSeqNumber = p.expectedSeqNumber;
+    p.expectedSeqNumber = tempSeqNumber;
+    expectedSeqNumber = tempSeqNumber;
+}
+
+bool LDPPacketInWindow::isNull() const {
+    return packet == NULL;
+}
+
+LDPPacketInWindow::LDPPacketInWindow(const LDPPacketInWindow &p) : packet(NULL) {
+    *this = p;
+}
+
+LDPPacketInWindow &LDPPacketInWindow::operator=(const LDPPacketInWindow &p) {
+    if (this == &p) {
+        return *this;
+    }
+    if (packet != NULL) {
+        delete packet;
+    }
+    if (p.packet == NULL) {
+        packet = NULL;
+    } else {
+        packet = new LDPPacket(*(p.packet));
+    }
+    isACKd = p.isACKd;
+    expectedSeqNumber = p.expectedSeqNumber;
+    return *this;
+}
+
+PacketAndItsTimeout::PacketAndItsTimeout(LDPPacketInWindow *packet, timespec sentTime) : packet(packet),
+                                                                                         sentTime(sentTime) {
+
+}
+
+long PacketAndItsTimeout::timeUntilTimeout() const {
+    struct timespec spec;
+    clock_gettime(CLOCK_MONOTONIC, &spec);
+    return getTimeDifferenceMs(spec, sentTime) + TIMEOUT_DURATION_MS;
+}

@@ -25,7 +25,9 @@
 #include <netdb.h>
 #include <pthread.h>
 #include <semaphore.h>
-
+#include <time.h>
+#include <sys/time.h>
+#include <math.h>
 
 #include <string>
 #include <vector>
@@ -33,8 +35,8 @@
 #include <iostream>
 #include <deque>
 
-// todo: sil?
-#define MAXBUFLEN 123
+// todo: sil? bufferden cok string girince cortluyor program.
+#define MAXBUFLEN 1234
 
 
 
@@ -58,20 +60,37 @@
  * Also the window size must not be larger than 15 bits because the sequence numbers are 2 bytes.
  *
  */
-#define WINDOW_SIZE 12
+#define SENDER_WINDOW_SIZE 12
+
+/**
+ * Just for being sure, receiver window size is more.
+ */
+#define RECEIVER_WINDOW_SIZE (SENDER_WINDOW_SIZE+4)
 
 /**
  * We can't queue infinite packets for sending.
  * todo: Crime book is 3.4MB. What happens if this huge input is inputted from stdin? Does fgets work properly or does it drop some lines? Try it.
  */
-#define WINDOW_CONTAINER_MAX_SIZE 1024
+#define PACKETS_TO_BE_SENT_Q_SIZE (1000 + SENDER_WINDOW_SIZE)
+#define PACKETS_RECEIVED_Q_SIZE PACKETS_TO_BE_SENT_Q_SIZE
+
+/**
+ * Fine tune this
+ */
+#define TROLL_PROPAGATION_DELAY 20
+/**
+ * RTT + 4ms
+ * Assume cpu takes 8 miliseconds to do its thing.
+ */
+#define TIMEOUT_DURATION_MS (TROLL_PROPAGATION_DELAY * 2 + 8)
 
 /**
  * Since the maximum message count per packet is 1, then there won't be more than window size messages
  * at a time in the message queue. Make it + 1 just to be sure.
  */
-#define MAX_REC_MESSAGE_Q_SIZE WINDOW_SIZE + 1
+#define MAX_REC_MESSAGE_Q_SIZE (RECEIVER_WINDOW_SIZE + 1)
 
+long getTimeDifferenceMs(timespec start, timespec end);
 
 void *get_in_addr(struct sockaddr *sa);
 
@@ -113,6 +132,8 @@ void *deserialize_char(void *buffer, char *value);
 class LDPPacket {
 public:
     // PACKET START ------------------------------------------------
+
+
     /**
      * the checksum field of the decoded packet.
      * calculated when sending and deserialized from the packet data when receiving.
@@ -151,10 +172,19 @@ public:
 
     bool isCorrupted;
 
+    LDPPacket(const LDPPacket &packet);
+
     LDPPacket();
 
+    LDPPacket(const char *data, size_t n, bool isAck, bool isSeq, bool isTheLastPacketOfTheMessage, uint16_t seqNumber,
+              uint16_t ackNumber);
 
-    LDPPacket(const char *data, size_t n);
+    LDPPacket(bool isAck, bool isSeq, bool isTheLastPacketOfTheMessage, uint16_t seqNumber,
+              uint16_t ackNumber);
+
+    void print(bool sending);
+
+    std::string payloadToString();
 
     /**
      *
@@ -174,6 +204,50 @@ public:
     static uint16_t calculateChecksum(void *data, size_t n);
 };
 
+/**
+ * if isNULL: not received yet but expected to be
+ * if not in window: not yet sent
+ */
+class LDPPacketInWindow {
+public:
+    LDPPacketInWindow(LDPPacket &p, bool isAck, uint16_t seqNumber);
+
+    LDPPacketInWindow(const LDPPacketInWindow &p);
+
+    LDPPacketInWindow();
+
+    LDPPacketInWindow(uint16_t seqNum);
+
+    LDPPacketInWindow &operator=(const LDPPacketInWindow &p);
+
+    LDPPacketInWindow *make(LDPPacket &p, bool isAck, uint16_t seqNum);
+
+    void shallowSwap(LDPPacketInWindow &p);
+
+    bool isNull() const;
+
+
+    ~LDPPacketInWindow();
+
+    /**
+     * Just to make this nullable
+     * here I make it be on heap
+     */
+    LDPPacket *packet;
+    uint16_t expectedSeqNumber;
+    bool isACKd;
+};
+
+class PacketAndItsTimeout {
+public:
+    LDPPacketInWindow *packet;
+    timespec sentTime;
+
+    PacketAndItsTimeout(LDPPacketInWindow *packet, timespec sentTime);
+    long timeUntilTimeout() const;
+
+};
+
 class LDP {
 public:
     // todo: tum semaphorelerin ve mutexlerin ve threadlerin ve falan filan destroy edildiginden emin ol
@@ -184,20 +258,62 @@ public:
     bool isClient;
     bool isListening;
     int sockfd;
+
     void *(*onMessage)(void *, std::string &message);
+
     void *onMessageArg;
+
+    /**
+     * The lifecycle of a packet:
+     * todo: producer consumerlerini de yaz bunlarin.
+     * packetsToBeSent -> senderWindow -> receiverWindow -> packetsReceived -> receivedMessageQueue
+     */
+
+    std::queue<LDPPacket> packetsToBeSent;
+    sem_t packetsToBeSentFullSlotCount, packetsToBeSentEmptySlotCount;
+    pthread_mutex_t packetsToBeSentMutex;
+
+    std::deque<LDPPacketInWindow> senderWindow;
+    sem_t senderWindowFullSlotCount, senderWindowEmptySlotCount;
+    pthread_mutex_t senderWindowMutex;
+    uint16_t seqNumOfTheLastPacketInSenderWind;
+
+    /**
+     * senderWindow consumer&producer
+     * sentPacketTimeouts consumer
+     *
+     * @param ackNum
+     */
+    void ackAndSlideSenderWindow(uint16_t ackNum);
+
+    std::deque<PacketAndItsTimeout> sentPacketTimeouts;
+    sem_t sentPacketTimeoutsFullSlotCount, sentPacketTimeoutsEmptySlotCount;
+    pthread_mutex_t sentPacketTimeoutsMutex;
+
+    /**
+     * Receiver window is always full with null packets (i.e. expected but not yet received packets).
+     */
+    std::deque<LDPPacketInWindow> receiverWindow;
+    sem_t receiverWindowFullSlotCount, receiverWindowEmptySlotCount;
+    pthread_mutex_t receiverWindowMutex;
+    uint16_t seqNumOfTheLastPacketInReceiverWind;
+
+    /**
+     * packetsReceived producer
+     */
+    void receiveAndSlideReceiverWindow(LDPPacket &p);
+
+    std::queue<LDPPacket> packetsReceived;
+    sem_t packetsReceivedFullSlotCount, packetsReceivedEmptySlotCount;
+    pthread_mutex_t packetsReceivedMutex;
 
     std::queue<std::string> receivedMessageQueue;
     sem_t receivedMessageQueueFullSlotCount, receivedMessageQueueEmptySlotCount;
     pthread_mutex_t receivedMessageQueueMutex;
 
-    std::deque<LDPPacket> senderWindow;
-    sem_t senderWindowFullSlotCount, senderWindowEmptySlotCount;
-    pthread_mutex_t senderWindowMutex;
+    void printSentPacketTimeouts();
 
-    std::deque<LDPPacket> receiverWindow;
-    sem_t receiverWindowFullSlotCount, receiverWindowEmptySlotCount;
-    pthread_mutex_t receiverWindowMutex;
+    static long getTimeUntilPacketTimeout(timespec packetSentTime);
 
     bool getIsListening() const;
 
@@ -220,29 +336,60 @@ public:
     int computeChateeAddrInfo();
 
     /**
-     * senderWindow producer
+     * packetsToBeSent producer
      */
     void send(std::string &message);
 
-
-
-    std::string deliverData();
-
 private:
-    static void *ldpPacketReceiverHelper(void *context);
-    void *ldpPacketReceiver();
-
     /**
-     * senderWindow consumer
+     * packetsToBeSent consumer
+     * senderWindow producer
+     * sentPacketTimeouts producer
      * @return
      */
     void *ldpPacketSender();
+
     static void *ldpPacketSenderHelper(void *context);
 
+    /**
+     * sentPacketTimeouts consumer&producer
+     * @return
+     */
+    void *ldpPacketRetransmitter();
+
+    static void *ldpPacketRetransmitterHelper(void *context);
+
+    /**
+     * note: received packets dont get buffered in my code. perhaps it is buffered on udp code, idk
+     * but it isn't neccesary to buffer them since sender only sends packets on their same sized window.
+     *
+     * receiverWindow producer
+     *
+     * @return
+     */
+    void *ldpPacketReceiver();
+
+    static void *ldpPacketReceiverHelper(void *context);
+
+    /**
+     * packetsReceived consumer
+     * receivedMessageQueue producer
+     */
+    void *messageProducer();
+
+    static void *messageProducerHelper(void *context);
+
+    /**
+     * receivedMessageQueue consumer
+     */
     void *messageConsumer();
+
     static void *messageConsumerHelper(void *context);
 
+
     void udpSend(LDPPacket &packet);
+
+
     /**
      *
      * @return may receive corrupted packet with obj.isCorrupted=1
@@ -276,8 +423,6 @@ public:
     void initiateChat();
 
     void sendMessage(std::string message);
-
-    std::string receiveMessage();
 
     /**
      * source: https://stackoverflow.com/questions/1151582/pthread-function-from-a-class

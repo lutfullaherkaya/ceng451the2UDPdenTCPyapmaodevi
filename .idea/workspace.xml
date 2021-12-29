@@ -16,13 +16,13 @@
     </configurations>
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="6c32ae89-926d-4d8a-9c14-ab01e47c954f" name="Changes" comment="sınıflara güçler ayrılığı ilkesini nakşettim. sırada gönderme penceresi ve ack ve timeout kaldı.">
+    <list default="true" id="6c32ae89-926d-4d8a-9c14-ab01e47c954f" name="Changes" comment="senderWindow'u olusturdum ve bağladım. sonraki yapılacaklar:&#10;receiverWindow&#10;&#10;paket kaybının olmadığını varsayıp ack gönder önce timeoutsuz. corrupted olunca bir daha yollasın ack'yi.&#10;&#10;sonraki aşamada ise timeout olursa retransmit yapsın.&#10;&#10;inşallah biter yarın.&#10;&#10;hayırlı geceler.">
+      <change beforePath="$PROJECT_DIR$/.idea/inspectionProfiles/Project_Default.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/inspectionProfiles/Project_Default.xml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/client" beforeDir="false" afterPath="$PROJECT_DIR$/client" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/ldp.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/ldp.cpp" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/ldp.h" beforeDir="false" afterPath="$PROJECT_DIR$/ldp.h" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/server" beforeDir="false" afterPath="$PROJECT_DIR$/server" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/server.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/server.cpp" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -38,7 +38,13 @@
     </projectState>
   </component>
   <component name="Git.Settings">
+    <option name="RECENT_BRANCH_BY_REPOSITORY">
+      <map>
+        <entry key="$PROJECT_DIR$" value="master" />
+      </map>
+    </option>
     <option name="RECENT_GIT_ROOT_PATH" value="$PROJECT_DIR$" />
+    <option name="RESET_MODE" value="HARD" />
   </component>
   <component name="GitSEFilterConfiguration">
     <file-type-list>
@@ -100,6 +106,7 @@
     <property name="WebServerToolWindowFactoryState" value="false" />
     <property name="cf.first.check.clang-format" value="false" />
     <property name="cidr.known.project.marker" value="true" />
+    <property name="last_opened_file_path" value="$USER_HOME$/İndirilenler" />
     <property name="node.js.detected.package.eslint" value="true" />
     <property name="node.js.selected.package.eslint" value="(autodetect)" />
     <property name="nodejs_package_manager_path" value="npm" />
@@ -236,5 +243,21 @@
     <MESSAGE value="checksum ve serializasyon (structu parçalayıp gönderip geri birleştirme) bitti. şimdi hatalı mesajı anlıyoruz. sırada soket kurma falan kısmını LDP sınıfına taşıma kaldı. chatterde sadece yüksek seviye fonksyionlar olsun. ldp'de olsun güvenilir veri transfer protokolü kısmı. paket kısmı da ldp packette." />
     <MESSAGE value="sınıflara güçler ayrılığı ilkesini nakşettim. sırada gönderme penceresi ve ack ve timeout kaldı." />
     <option name="LAST_COMMIT_MESSAGE" value="sınıflara güçler ayrılığı ilkesini nakşettim. sırada gönderme penceresi ve ack ve timeout kaldı." />
+  </component>
+  <component name="XDebuggerManager">
+    <breakpoint-manager>
+      <breakpoints>
+        <line-breakpoint enabled="true" type="com.jetbrains.cidr.execution.debugger.OCBreakpointType">
+          <url>file://$PROJECT_DIR$/ldp.cpp</url>
+          <line>104</line>
+          <option name="timeStamp" value="22" />
+        </line-breakpoint>
+        <line-breakpoint enabled="true" type="com.jetbrains.cidr.execution.debugger.OCBreakpointType">
+          <url>file://$PROJECT_DIR$/ldp.cpp</url>
+          <line>466</line>
+          <option name="timeStamp" value="23" />
+        </line-breakpoint>
+      </breakpoints>
+    </breakpoint-manager>
   </component>
 </project>
