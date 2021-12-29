@@ -13,27 +13,8 @@
 #ifndef THE2_LDP_H
 #define THE2_LDP_H
 
-#include <stdio.h>
-#include <stdlib.h>
-#include <unistd.h>
-#include <errno.h>
-#include <string.h>
-#include <sys/types.h>
-#include <sys/socket.h>
-#include <netinet/in.h>
-#include <arpa/inet.h>
-#include <netdb.h>
-#include <pthread.h>
-#include <semaphore.h>
-#include <time.h>
-#include <sys/time.h>
-#include <math.h>
+#include "utils.h"
 
-#include <string>
-#include <vector>
-#include <queue>
-#include <iostream>
-#include <deque>
 
 // todo: sil? bufferden cok string girince cortluyor program.
 #define MAXBUFLEN 1234
@@ -77,7 +58,7 @@
 /**
  * Fine tune this
  */
-#define TROLL_PROPAGATION_DELAY 20
+#define TROLL_PROPAGATION_DELAY 50
 /**
  * RTT + 4ms
  * Assume cpu takes 8 miliseconds to do its thing.
@@ -90,44 +71,8 @@
  */
 #define MAX_REC_MESSAGE_Q_SIZE (RECEIVER_WINDOW_SIZE + 1)
 
-long getTimeDifferenceMs(timespec start, timespec end);
 
-void *get_in_addr(struct sockaddr *sa);
 
-// serialize source (mostly modified): https://stackoverflow.com/questions/1577161/passing-a-structure-through-sockets-in-c
-void *serialize_uint32_t(void *buffer, uint32_t value);
-
-void *deserialize_uint32_t(void *buffer, uint32_t *value);
-
-void *serialize_uint16_t(void *buffer, uint16_t value);
-
-void *deserialize_uint16_t(void *buffer, uint16_t *value);
-
-void *serialize_uint8_t(void *buffer, uint8_t value);
-
-void *deserialize_uint8_t(void *buffer, uint8_t *value);
-
-/**
- *
- * @param buffer
- * @param str perhaps not null terminated string
- * @param n
- * @return
- */
-void *serialize_char_array(void *buffer, char *str, size_t n);
-
-/**
- *
- * @param buffer
- * @param str the output char array
- * @param n
- * @return
- */
-void *deserialize_char_array(void *buffer, char *str, size_t n);
-
-void *serialize_char(void *buffer, char value);
-
-void *deserialize_char(void *buffer, char *value);
 
 class LDPPacket {
 public:
@@ -182,7 +127,8 @@ public:
     LDPPacket(bool isAck, bool isSeq, bool isTheLastPacketOfTheMessage, uint16_t seqNumber,
               uint16_t ackNumber);
 
-    void print(bool sending);
+    void print(bool sending) const;
+
 
     std::string payloadToString();
 
@@ -203,7 +149,6 @@ public:
 
     static uint16_t calculateChecksum(void *data, size_t n);
 };
-
 /**
  * if isNULL: not received yet but expected to be
  * if not in window: not yet sent
@@ -269,6 +214,7 @@ public:
      * packetsToBeSent -> senderWindow -> receiverWindow -> packetsReceived -> receivedMessageQueue
      */
 
+
     std::queue<LDPPacket> packetsToBeSent;
     sem_t packetsToBeSentFullSlotCount, packetsToBeSentEmptySlotCount;
     pthread_mutex_t packetsToBeSentMutex;
@@ -280,15 +226,11 @@ public:
 
     /**
      * senderWindow consumer&producer
-     * sentPacketTimeouts consumer
      *
      * @param ackNum
      */
     void ackAndSlideSenderWindow(uint16_t ackNum);
 
-    std::deque<PacketAndItsTimeout> sentPacketTimeouts;
-    sem_t sentPacketTimeoutsFullSlotCount, sentPacketTimeoutsEmptySlotCount;
-    pthread_mutex_t sentPacketTimeoutsMutex;
 
     /**
      * Receiver window is always full with null packets (i.e. expected but not yet received packets).
@@ -307,17 +249,10 @@ public:
     sem_t packetsReceivedFullSlotCount, packetsReceivedEmptySlotCount;
     pthread_mutex_t packetsReceivedMutex;
 
-    std::queue<std::string> receivedMessageQueue;
-    sem_t receivedMessageQueueFullSlotCount, receivedMessageQueueEmptySlotCount;
-    pthread_mutex_t receivedMessageQueueMutex;
 
-    void printSentPacketTimeouts();
+    void printRecWindow() const;
+    void printSendWindow() const;
 
-    static long getTimeUntilPacketTimeout(timespec packetSentTime);
-
-    bool getIsListening() const;
-
-    void setIsListening(bool isListening);
 
     /**
      * todo: bir sey donebiliriz bye alinca.
@@ -344,17 +279,12 @@ private:
     /**
      * packetsToBeSent consumer
      * senderWindow producer
-     * sentPacketTimeouts producer
      * @return
      */
     void *ldpPacketSender();
 
     static void *ldpPacketSenderHelper(void *context);
 
-    /**
-     * sentPacketTimeouts consumer&producer
-     * @return
-     */
     void *ldpPacketRetransmitter();
 
     static void *ldpPacketRetransmitterHelper(void *context);
@@ -373,18 +303,11 @@ private:
 
     /**
      * packetsReceived consumer
-     * receivedMessageQueue producer
      */
     void *messageProducer();
 
     static void *messageProducerHelper(void *context);
 
-    /**
-     * receivedMessageQueue consumer
-     */
-    void *messageConsumer();
-
-    static void *messageConsumerHelper(void *context);
 
 
     void udpSend(LDPPacket &packet);
@@ -398,44 +321,6 @@ private:
 
 };
 
-class Chatter {
-private:
-    bool isListening;
-public:
-    LDP ldp;
 
-    bool getIsListening();
-
-    void setIsListening(bool isListening);
-
-    bool isClient;
-    pthread_mutex_t ioLock;
-    pthread_mutex_t isListeningLock;
-
-    Chatter(const std::string &chateeIp, const std::string &chateePort, const std::string &myPort, bool isClient);
-
-    Chatter(const std::string &myPort, bool isClient);
-
-    int initializeMutexes();
-
-    int destroyMutexes();
-
-    void initiateChat();
-
-    void sendMessage(std::string message);
-
-    /**
-     * source: https://stackoverflow.com/questions/1151582/pthread-function-from-a-class
-     */
-    void *printMessage(std::string &message);
-
-    static void *printMessageHelper(void *context, std::string &message);
-
-    void endChat();
-
-    ~Chatter();
-
-
-};
 
 #endif //THE2_LDP_H

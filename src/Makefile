@@ -1,11 +1,12 @@
 # Makefile for client and server
 
 CC = g++
-OBJCLI = client.cpp ldp.cpp
-OBJSRV = server.cpp ldp.cpp
+OBJCLI = client.cpp ldp.cpp chatter.cpp utils.cpp
+OBJSRV = server.cpp ldp.cpp chatter.cpp utils.cpp
 CPPFLAGS = -g
 # setup for system
 LIBS = -lpthread
+
 
 all: client server
 

@@ -16,303 +16,11 @@
 
 // todo: baglanti kurulmadan server yazamasin.
 
-#pragma clang diagnostic push
-#pragma ide diagnostic ignored "EndlessLoop"
-
-long getTimeDifferenceMs(timespec start, timespec end) {
-    return ((long) end.tv_sec - (long) start.tv_sec) * 1000 + ((long) end.tv_nsec - (long) start.tv_nsec) / 1000000;
-}
 
 
-void *serialize_uint32_t(void *buffer, uint32_t value) {
-    *((uint32_t *) buffer) = htonl(value);
-    return ((uint32_t *) buffer) + 1;
-}
-
-void *deserialize_uint32_t(void *buffer, uint32_t *value) {
-    *value = ntohl(*((uint32_t *) buffer));
-    return ((uint32_t *) buffer) + 1;
-}
-
-void *serialize_uint16_t(void *buffer, uint16_t value) {
-    *((uint16_t *) buffer) = htons(value);
-    return ((uint16_t *) buffer) + 1;
-}
-
-void *deserialize_uint16_t(void *buffer, uint16_t *value) {
-    *value = ntohs(*((uint16_t *) buffer));
-    return ((uint16_t *) buffer) + 1;
-}
-
-void *serialize_uint8_t(void *buffer, uint8_t value) {
-    *((uint8_t *) buffer) = value;
-    return ((uint8_t *) buffer) + 1;
-}
-
-void *deserialize_uint8_t(void *buffer, uint8_t *value) {
-    *value = *((uint8_t *) buffer);
-    return ((uint8_t *) buffer) + 1;
-}
-
-/**
- *
- * @param buffer
- * @param str perhaps not null terminated string
- * @param n
- * @return
- */
-void *serialize_char_array(void *buffer, char *str, size_t n) {
-    for (int i = 0; i < n; ++i) {
-        ((char *) buffer)[i] = str[i];
-    }
-    return ((char *) buffer) + n;
-}
-
-/**
- *
- * @param buffer
- * @param str the output char array
- * @param n
- * @return
- */
-void *deserialize_char_array(void *buffer, char *str, size_t n) {
-    for (int i = 0; i < n; ++i) {
-        str[i] = ((char *) buffer)[i];
-    }
-    return ((char *) buffer) + n;
-}
-
-void *serialize_char(void *buffer, char value) {
-    ((char *) buffer)[0] = value;
-    return ((char *) buffer) + 1;
-}
-
-void *deserialize_char(void *buffer, char *value) {
-    *value = ((char *) buffer)[0];
-    return ((char *) buffer) + 1;
-}
 
 
-void *get_in_addr(struct sockaddr *sa) {
-    if (sa->sa_family == AF_INET) {
-        return &(((struct sockaddr_in *) sa)->sin_addr);
-    }
 
-    return &(((struct sockaddr_in6 *) sa)->sin6_addr);
-}
-
-void Chatter::sendMessage(std::string message) {
-    ldp.send(message);
-}
-
-
-Chatter::Chatter(const std::string &chateeIp, const std::string &chateePort, const std::string &myPort, bool isClient)
-        : isClient(isClient), ldp(chateeIp, chateePort, myPort, isClient) {
-    // client
-    initializeMutexes();
-    ldp.createAndBindSocket();
-    ldp.listen(&Chatter::printMessageHelper, this);
-
-    // todo: durdurma mekanizmasi
-    while (true) {
-        char message[MAXBUFLEN];
-        fgets(message, MAXBUFLEN, stdin);
-        sendMessage(message);
-    }
-
-    destroyMutexes();
-}
-
-Chatter::Chatter(const std::string &myPort, bool isClient) : isClient(isClient), ldp(myPort, isClient) {
-    // server
-    initializeMutexes();
-    ldp.createAndBindSocket();
-    ldp.listen(&Chatter::printMessageHelper, this);
-
-    // todo: durdurma mekanizmasi
-    while (true) {
-        char message[MAXBUFLEN];
-        fgets(message, MAXBUFLEN, stdin);
-        sendMessage(message);
-    }
-
-    destroyMutexes();
-}
-
-void Chatter::initiateChat() {
-
-}
-
-void Chatter::endChat() {
-    // todo: gerekli ack mack falan filan yapilacak
-    setIsListening(false);
-
-    printf("The Chat has been terminated.\n");
-}
-
-
-bool Chatter::getIsListening() {
-    pthread_mutex_lock(&isListeningLock);
-    bool isListening1 = isListening;
-    pthread_mutex_unlock(&isListeningLock);
-    return isListening1;
-}
-
-void Chatter::setIsListening(bool isListening1) {
-    pthread_mutex_lock(&isListeningLock);
-    isListening = isListening1;
-    pthread_mutex_unlock(&isListeningLock);
-}
-
-Chatter::~Chatter() {
-    destroyMutexes();
-}
-
-int Chatter::initializeMutexes() {
-    pthread_mutex_init(&(ioLock), NULL);
-    pthread_mutex_init(&(isListeningLock), NULL);
-    return 0;
-}
-
-int Chatter::destroyMutexes() {
-    pthread_mutex_destroy(&ioLock);
-    pthread_mutex_destroy(&isListeningLock);
-    return 0;
-}
-
-void *Chatter::printMessage(std::string &message) {
-    std::cout << message << std::endl;
-    return NULL;
-}
-
-void *Chatter::printMessageHelper(void *context, std::string &message) {
-    return ((Chatter *) context)->printMessage(message);
-}
-
-/**
- * source: https://cse.usf.edu/~kchriste/tools/checksum.c
- */
-uint16_t LDPPacket::calculateChecksum(void *data, size_t n) {
-    // Note: I don't include psuedo ip header in the checksum.
-    // It is LDP implementation choice. It is not because I don't want to do any more work at all
-
-    uint32_t sum = 0;
-
-    uint16_t *dataPtr16 = (uint16_t *) data;
-    while (n > 1) {
-        sum += *dataPtr16;
-        dataPtr16++;
-        n -= 2;
-    }
-
-    // Add left-over byte, if any
-    if (n > 0) {
-        sum += ((uint8_t *) data)[n - 1];
-    }
-
-    // Fold 32-bit sum to 16 bits
-    while (sum >> 16)
-        sum = (sum & 0xFFFF) + (sum >> 16);
-
-    return (~sum);
-}
-
-
-LDPPacket::LDPPacket() : isCorrupted(false) {}
-
-LDPPacket LDPPacket::decode(void *data, size_t n) {
-    LDPPacket packet;
-    void *startOfDataPtr = data;
-    data = deserialize_uint16_t(data, &(packet.checksum));
-
-    uint8_t flags;
-    data = deserialize_uint8_t(data, &flags);
-    packet.isAck = flags & 0x1;
-    packet.isSeq = (flags >> 1) & 0x1;
-    packet.isTheLastPacketOfTheMessage = (flags >> 2) & 0x1;
-
-    data = deserialize_uint16_t(data, &packet.seqNumber);
-    data = deserialize_uint16_t(data, &packet.ackNumber);
-    data = deserialize_char_array(data, packet.payload, 8);
-
-    packet.isCorrupted = packet.checksum != calculateChecksum(((int16_t *) startOfDataPtr) + 1, LDP_PACKET_SIZE - 2);
-    return packet;
-}
-
-size_t LDPPacket::encode(void *data) {
-    // the first 2 bytes is checksum, serialized at the end
-    void *startOfDataPtr = data;
-    data = ((uint16_t *) startOfDataPtr) + 1;
-
-    uint8_t flags = 0;
-    flags |= isAck;
-    flags |= isSeq << 1;
-    flags |= isTheLastPacketOfTheMessage << 2;
-
-    data = serialize_uint8_t(data, flags);
-    data = serialize_uint16_t(data, seqNumber);
-    data = serialize_uint16_t(data, ackNumber);
-    data = serialize_char_array(data, payload, 8);
-
-    checksum = calculateChecksum(((uint16_t *) startOfDataPtr) + 1, LDP_PACKET_SIZE - 2);
-    serialize_uint16_t(startOfDataPtr, checksum);
-
-    return LDP_PACKET_SIZE;
-}
-
-
-LDPPacket::LDPPacket(const LDPPacket &p1) {
-    checksum = p1.checksum;
-    isAck = p1.isAck;
-    isSeq = p1.isSeq;
-    isTheLastPacketOfTheMessage = p1.isTheLastPacketOfTheMessage;
-    seqNumber = p1.seqNumber;
-    ackNumber = p1.ackNumber;
-    for (int i = 0; i < 8; ++i) {
-        payload[i] = p1.payload[i];
-    }
-    isCorrupted = p1.isCorrupted;
-}
-
-LDPPacket::LDPPacket(const char *data, size_t n, bool isAck, bool isSeq, bool isTheLastPacketOfTheMessage,
-                     uint16_t seqNumber, uint16_t ackNumber)
-        : isAck(isAck), isSeq(isSeq), isTheLastPacketOfTheMessage(isTheLastPacketOfTheMessage), seqNumber(seqNumber),
-          ackNumber(ackNumber) {
-    int i;
-    for (i = 0; i < 8 && i < n; ++i) {
-        payload[i] = data[i];
-    }
-    for (; i < 8; ++i) {
-        payload[i] = '\0';
-    }
-}
-
-
-LDPPacket::LDPPacket(bool isAck, bool isSeq, bool isTheLastPacketOfTheMessage, uint16_t seqNumber, uint16_t ackNumber)
-        : isAck(isAck), isSeq(isSeq), isTheLastPacketOfTheMessage(isTheLastPacketOfTheMessage), seqNumber(seqNumber),
-          ackNumber(ackNumber) {
-    int i;
-    for (i = 0; i < 8; ++i) {
-        payload[i] = 0;
-    }
-}
-
-
-std::string LDPPacket::payloadToString() {
-    std::string str;
-    for (int i = 0; i < 8; ++i) {
-        if (payload[i]) {
-            str += payload[i];
-        }
-    }
-    return str;
-}
-
-void LDPPacket::print(bool sending) {
-    fprintf(stderr, "%s {isAck:%d, isSeq:%d, isLast:%d, ackNum:%d, seqNum:%d}\n",
-            (sending ? "sending:   " : "receiving: "), isAck, isSeq,
-            isTheLastPacketOfTheMessage, ackNumber, seqNumber);
-}
 
 
 int LDP::createAndBindSocket() {
@@ -487,12 +195,13 @@ void *LDP::ldpPacketReceiver() {
                 ackAndSlideSenderWindow(packet.ackNumber);
             }
             if (packet.isSeq) {
+                receiveAndSlideReceiverWindow(packet);
                 LDPPacket ackPacket(true, false, false, 0,
                                     packet.seqNumber);
                 udpSend(ackPacket);
                 /*todo: direkt burada gonderilecek paketler kuyruguna bakip yoksa 1 ms bekleyip ack ile birlikte gonder.*/
 
-                receiveAndSlideReceiverWindow(packet);
+
             }
         } else {
             fprintf(stderr, "Received and dropped garbled packet. \n");
@@ -539,18 +248,6 @@ void *LDP::ldpPacketSender() {
         pthread_mutex_unlock(&senderWindowMutex);
         sem_post(&senderWindowFullSlotCount);
 
-        // produce sentPacketTimeouts
-        sem_wait(&sentPacketTimeoutsEmptySlotCount);
-        pthread_mutex_lock(&sentPacketTimeoutsMutex);
-
-        struct timespec spec;
-        clock_gettime(CLOCK_MONOTONIC, &spec);
-
-        sentPacketTimeouts.push_back(PacketAndItsTimeout(packetPtr, spec));
-
-        pthread_mutex_unlock(&sentPacketTimeoutsMutex);
-        sem_post(&sentPacketTimeoutsFullSlotCount);
-
     }
     return NULL;
 }
@@ -559,70 +256,8 @@ void *LDP::ldpPacketRetransmitterHelper(void *context) {
     return ((LDP *) context)->ldpPacketRetransmitter();
 }
 
-void *LDP::ldpPacketRetransmitter() {
-    while (true) {
-        fprintf(stderr,"TRANSMITTERLOOP.");
-        printSentPacketTimeouts();
-        fprintf(stderr, "\n");
-
-        sem_wait(&sentPacketTimeoutsFullSlotCount);
-        pthread_mutex_lock(&sentPacketTimeoutsMutex);
-
-        struct timespec spec;
-        clock_gettime(CLOCK_MONOTONIC, &spec);
-
-        long sleepDuration = sentPacketTimeouts.front().timeUntilTimeout();
-
-
-        pthread_mutex_unlock(&sentPacketTimeoutsMutex);
-        sem_post(&sentPacketTimeoutsFullSlotCount);
-
-        printSentPacketTimeouts();
-
-        fprintf(stderr, "retransmitter Sleep(%ldms)\n", sleepDuration);
-        if (sleepDuration > 0) {
-            if (sleepDuration >= 1000)
-                sleep(sleepDuration / 1000);
-            usleep((sleepDuration % 1000) * 1000);
-        }
-
-        pthread_mutex_lock(&sentPacketTimeoutsMutex);
-        if (!(sentPacketTimeouts.empty())) {
-            PacketAndItsTimeout pAndTimeout = sentPacketTimeouts.front();
-            clock_gettime(CLOCK_MONOTONIC, &spec);
-
-
-            printf("TIME UNTIL TIMEOUT: %ld\n", pAndTimeout.timeUntilTimeout());
-            if (pAndTimeout.timeUntilTimeout() <= 0) {
-                LDPPacket &packet = *(pAndTimeout.packet->packet);
-                fprintf(stderr, "Retransmitting: %s\n", (packet.payloadToString()).c_str());
-
-                udpSend(packet);
-                sentPacketTimeouts.pop_front();
-                clock_gettime(CLOCK_MONOTONIC, &spec);
-
-                sentPacketTimeouts.push_back(PacketAndItsTimeout(pAndTimeout.packet, spec));
-            }
-        }
-        pthread_mutex_unlock(&sentPacketTimeoutsMutex);
-
-    }
-    return NULL;
-}
-
-bool LDP::getIsListening() const {
-    return isListening;
-}
-
-void LDP::setIsListening(bool isListening1) {
-    isListening = isListening1;
-}
 
 void LDP::initializeThreadMhreadEtcMtc() {
-    /*pthread_mutex_init(&receivedMessageQueueMutex, NULL);
-    sem_init(&receivedMessageQueueEmptySlotCount, 0, MAX_REC_MESSAGE_Q_SIZE);
-    sem_init(&receivedMessageQueueFullSlotCount, 0, 0);*/
-
     pthread_mutex_init(&packetsToBeSentMutex, NULL);
     sem_init(&packetsToBeSentEmptySlotCount, 0, PACKETS_TO_BE_SENT_Q_SIZE);
     sem_init(&packetsToBeSentFullSlotCount, 0, 0);
@@ -645,10 +280,6 @@ void LDP::initializeThreadMhreadEtcMtc() {
     sem_init(&packetsReceivedEmptySlotCount, 0, PACKETS_RECEIVED_Q_SIZE);
     sem_init(&packetsReceivedFullSlotCount, 0, 0);
 
-    pthread_mutex_init(&sentPacketTimeoutsMutex, NULL);
-    sem_init(&sentPacketTimeoutsEmptySlotCount, 0, SENDER_WINDOW_SIZE + 4);
-    sem_init(&sentPacketTimeoutsFullSlotCount, 0, 0);
-
 
     pthread_t ldpPacketSenderThreadID;
     pthread_create(&ldpPacketSenderThreadID, NULL, &LDP::ldpPacketSenderHelper, this);
@@ -661,9 +292,6 @@ void LDP::initializeThreadMhreadEtcMtc() {
     // TODO: chat bitince yapilsin bunlar baska yerde
     /*
 
-    pthread_mutex_destroy(&sentPacketTimeoutsMutex);
-    sem_destroy(&sentPacketTimeoutsEmptySlotCount);
-    sem_destroy(&sentPacketTimeoutsFullSlotCount);
 
     pthread_mutex_destroy(&packetsReceivedMutex);
     sem_destroy(&packetsReceivedEmptySlotCount);
@@ -681,9 +309,6 @@ void LDP::initializeThreadMhreadEtcMtc() {
     sem_destroy(&packetsToBeSentEmptySlotCount);
     sem_destroy(&packetsToBeSentFullSlotCount);
 
-    pthread_mutex_destroy(&receivedMessageQueueMutex);
-    sem_destroy(&receivedMessageQueueEmptySlotCount);
-    sem_destroy(&receivedMessageQueueFullSlotCount);
      */
 
     /*pthread_join(listenerThreadID, NULL);*/
@@ -695,15 +320,11 @@ void LDP::listen(void *(*onMessageEventHandler)(void *, std::string &), void *ar
     onMessage = onMessageEventHandler;
     onMessageArg = arg;
 
-    setIsListening(true);
     pthread_t listenerThreadID;
     pthread_create(&listenerThreadID, NULL, &LDP::ldpPacketReceiverHelper, this);
 
     pthread_t messageProducerThreadID;
     pthread_create(&messageProducerThreadID, NULL, &LDP::messageProducerHelper, this);
-
-    /*pthread_t messageConsumerThreadID;
-    pthread_create(&messageConsumerThreadID, NULL, &LDP::messageConsumerHelper, this);*/
 
 
     // todo: join and finish clean up threads
@@ -727,7 +348,6 @@ void *LDP::messageProducer() {
             pthread_mutex_unlock(&packetsReceivedMutex);
             sem_post(&packetsReceivedEmptySlotCount);
         }
-        // todo: delete receivedMessageQueue since we immediately consume it.
         (*onMessage)(onMessageArg, message);
     }
     return NULL;
@@ -738,22 +358,6 @@ void *LDP::messageProducerHelper(void *context) {
 }
 
 void LDP::ackAndSlideSenderWindow(uint16_t ackNum) {
-    sem_wait(&sentPacketTimeoutsFullSlotCount);
-    pthread_mutex_lock(&sentPacketTimeoutsMutex);
-
-    fprintf(stderr, "before and after deletion: \n");
-    printSentPacketTimeouts();
-    for (std::deque<PacketAndItsTimeout>::iterator it = sentPacketTimeouts.begin();
-         it != sentPacketTimeouts.end(); ++it) {
-        if (it->packet->packet->seqNumber == ackNum) {
-            sentPacketTimeouts.erase(it);
-            break;
-        }
-    }
-    printSentPacketTimeouts();
-
-    pthread_mutex_unlock(&sentPacketTimeoutsMutex);
-    sem_post(&sentPacketTimeoutsEmptySlotCount);
 
     pthread_mutex_lock(&senderWindowMutex);
     // ack
@@ -778,26 +382,6 @@ void LDP::ackAndSlideSenderWindow(uint16_t ackNum) {
     }
     pthread_mutex_unlock(&senderWindowMutex);
 }
-
-void *LDP::messageConsumer() {
-    std::string message;
-    while (true) {
-        sem_wait(&receivedMessageQueueFullSlotCount);
-        pthread_mutex_lock(&receivedMessageQueueMutex);
-
-        message = receivedMessageQueue.front();
-        receivedMessageQueue.pop();
-
-        pthread_mutex_unlock(&receivedMessageQueueMutex);
-        sem_post(&receivedMessageQueueEmptySlotCount);
-        (*onMessage)(onMessageArg, message);
-    }
-}
-
-void *LDP::messageConsumerHelper(void *context) {
-    return ((LDP *) context)->messageConsumer();
-}
-
 
 void LDP::receiveAndSlideReceiverWindow(LDPPacket &p) {
     pthread_mutex_lock(&receiverWindowMutex);
@@ -841,29 +425,171 @@ void LDP::receiveAndSlideReceiverWindow(LDPPacket &p) {
     pthread_mutex_unlock(&receiverWindowMutex);
 }
 
-void LDP::printSentPacketTimeouts() {
-    fprintf(stderr, "Sent Packet time until timeouts: [");
-    struct timespec spec;
-    clock_gettime(CLOCK_MONOTONIC, &spec);
+void *LDP::ldpPacketRetransmitter() {
+    while (true) {
+        pthread_mutex_lock(&senderWindowMutex);
 
-    for (int i = 0; i < sentPacketTimeouts.size(); ++i) {
-        long ms = sentPacketTimeouts[i].timeUntilTimeout();
-        fprintf(stderr, "(%ldms, seq:%d), ", ms, sentPacketTimeouts[i].packet->packet->seqNumber);
+        for (int i = 0; i < senderWindow.size(); ++i) {
+            if (!senderWindow[i].isACKd) {
+                LDPPacket packet = *senderWindow[i].packet;
+                udpSend(packet);
+            }
+        }
+
+        pthread_mutex_unlock(&senderWindowMutex);
+        sleepMs(TIMEOUT_DURATION_MS);
     }
-    fprintf(stderr, "]\n ");
 
-}
 
-long LDP::getTimeUntilPacketTimeout(timespec packetSentTime) {
-    struct timespec spec;
-    clock_gettime(CLOCK_MONOTONIC, &spec);
-    return getTimeDifferenceMs(packetSentTime, spec) + TIMEOUT_DURATION_MS;
+    return NULL;
 }
 
 
+/**
+ * source: https://cse.usf.edu/~kchriste/tools/checksum.c
+ */
+uint16_t LDPPacket::calculateChecksum(void *data, size_t n) {
+    // Note: I don't include psuedo ip header in the checksum.
+    // It is LDP implementation choice. It is not because I don't want to do any more work at all
+
+    uint32_t sum = 0;
+
+    uint16_t *dataPtr16 = (uint16_t *) data;
+    while (n > 1) {
+        sum += *dataPtr16;
+        dataPtr16++;
+        n -= 2;
+    }
+
+    // Add left-over byte, if any
+    if (n > 0) {
+        sum += ((uint8_t *) data)[n - 1];
+    }
+
+    // Fold 32-bit sum to 16 bits
+    while (sum >> 16)
+        sum = (sum & 0xFFFF) + (sum >> 16);
+
+    return (~sum);
+}
 
 
-// todo: while true'leri gormezden geliyor bu. isin bitince while(true) leri du
+LDPPacket::LDPPacket() : isCorrupted(false) {}
+
+LDPPacket LDPPacket::decode(void *data, size_t n) {
+    LDPPacket packet;
+    void *startOfDataPtr = data;
+    data = deserialize_uint16_t(data, &(packet.checksum));
+
+    uint8_t flags;
+    data = deserialize_uint8_t(data, &flags);
+    packet.isAck = flags & 0x1;
+    packet.isSeq = (flags >> 1) & 0x1;
+    packet.isTheLastPacketOfTheMessage = (flags >> 2) & 0x1;
+
+    data = deserialize_uint16_t(data, &packet.seqNumber);
+    data = deserialize_uint16_t(data, &packet.ackNumber);
+    data = deserialize_char_array(data, packet.payload, 8);
+
+    packet.isCorrupted = packet.checksum != calculateChecksum(((int16_t *) startOfDataPtr) + 1, LDP_PACKET_SIZE - 2);
+    return packet;
+}
+
+size_t LDPPacket::encode(void *data) {
+    // the first 2 bytes is checksum, serialized at the end
+    void *startOfDataPtr = data;
+    data = ((uint16_t *) startOfDataPtr) + 1;
+
+    uint8_t flags = 0;
+    flags |= isAck;
+    flags |= isSeq << 1;
+    flags |= isTheLastPacketOfTheMessage << 2;
+
+    data = serialize_uint8_t(data, flags);
+    data = serialize_uint16_t(data, seqNumber);
+    data = serialize_uint16_t(data, ackNumber);
+    data = serialize_char_array(data, payload, 8);
+
+    checksum = calculateChecksum(((uint16_t *) startOfDataPtr) + 1, LDP_PACKET_SIZE - 2);
+    serialize_uint16_t(startOfDataPtr, checksum);
+
+    return LDP_PACKET_SIZE;
+}
+
+
+LDPPacket::LDPPacket(const LDPPacket &p1) {
+    checksum = p1.checksum;
+    isAck = p1.isAck;
+    isSeq = p1.isSeq;
+    isTheLastPacketOfTheMessage = p1.isTheLastPacketOfTheMessage;
+    seqNumber = p1.seqNumber;
+    ackNumber = p1.ackNumber;
+    for (int i = 0; i < 8; ++i) {
+        payload[i] = p1.payload[i];
+    }
+    isCorrupted = p1.isCorrupted;
+}
+
+LDPPacket::LDPPacket(const char *data, size_t n, bool isAck, bool isSeq, bool isTheLastPacketOfTheMessage,
+                     uint16_t seqNumber, uint16_t ackNumber)
+        : isAck(isAck), isSeq(isSeq), isTheLastPacketOfTheMessage(isTheLastPacketOfTheMessage), seqNumber(seqNumber),
+          ackNumber(ackNumber) {
+    int i;
+    for (i = 0; i < 8 && i < n; ++i) {
+        payload[i] = data[i];
+    }
+    for (; i < 8; ++i) {
+        payload[i] = '\0';
+    }
+}
+
+
+LDPPacket::LDPPacket(bool isAck, bool isSeq, bool isTheLastPacketOfTheMessage, uint16_t seqNumber, uint16_t ackNumber)
+        : isAck(isAck), isSeq(isSeq), isTheLastPacketOfTheMessage(isTheLastPacketOfTheMessage), seqNumber(seqNumber),
+          ackNumber(ackNumber) {
+    int i;
+    for (i = 0; i < 8; ++i) {
+        payload[i] = 0;
+    }
+}
+
+
+std::string LDPPacket::payloadToString() {
+    std::string str;
+    for (int i = 0; i < 8; ++i) {
+        if (payload[i]) {
+            str += payload[i];
+        }
+    }
+    return str;
+}
+
+void LDPPacket::print(bool sending) const {
+    fprintf(stderr, "%s {isAck:%d, isSeq:%d, isLast:%d, ackNum:%d, seqNum:%d}\n",
+            (sending ? "sending:   " : "receiving: "), isAck, isSeq,
+            isTheLastPacketOfTheMessage, ackNumber, seqNumber);
+}
+
+void LDP::printSendWindow() const {
+    fprintf(stderr, "sender window: ");
+    for (int i = 0; i < senderWindow.size(); ++i) {
+        fprintf(stderr, "{p:%d, sq:%d, ackd:%d},",
+                !senderWindow[i].isNull(),
+                senderWindow[i].expectedSeqNumber, senderWindow[i].isACKd);
+    }
+    fprintf(stderr, "\n");
+}
+
+void LDP::printRecWindow() const {
+    fprintf(stderr, "receiver window: ");
+    for (int i = 0; i < receiverWindow.size(); ++i) {
+        fprintf(stderr, "{p:%d, sq:%d, ackd:%d},",
+                !receiverWindow[i].isNull(),
+                receiverWindow[i].expectedSeqNumber, receiverWindow[i].isACKd);
+    }
+    fprintf(stderr, "\n");
+
+}
 
 
 LDPPacketInWindow::LDPPacketInWindow(LDPPacket &p, bool isAck, uint16_t seqNumber = 0) : isACKd(isAck),

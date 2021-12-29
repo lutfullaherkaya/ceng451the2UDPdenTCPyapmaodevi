@@ -14,7 +14,5 @@ int main(int argc, char *argv[]) {
         exit(1);
     }
     Chatter clientChatter(argv[1], false);
-    std::queue<int> a;
-
     return 0;
 }
