@@ -16,19 +16,12 @@
     </configurations>
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="6c32ae89-926d-4d8a-9c14-ab01e47c954f" name="Changes" comment="şu an çalışıyooooooooooooor. ama çok yavaş. lorem bile 800ms sürüyor. Timeout dizisinin geliştirilmesi lazım.">
-      <change afterPath="$PROJECT_DIR$/src/threadsafedeque.cpp" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/threadsafedeque.h" afterDir="false" />
+    <list default="true" id="6c32ae89-926d-4d8a-9c14-ab01e47c954f" name="Changes" comment="bye sistemini hallettim. çıkarken 30 kere ack to ack yollayıp çıkacak bye alan kişi veya öbürüydü bilmiyorum kafalar karışık. iki general problemi, karşının çıktığını anlamak mümkün değil.">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/obj-files-and-benchmark/client" beforeDir="false" afterPath="$PROJECT_DIR$/obj-files-and-benchmark/client" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/obj-files-and-benchmark/rekorlarim" beforeDir="false" afterPath="$PROJECT_DIR$/obj-files-and-benchmark/rekorlarim" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/obj-files-and-benchmark/server" beforeDir="false" afterPath="$PROJECT_DIR$/obj-files-and-benchmark/server" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/Makefile" beforeDir="false" afterPath="$PROJECT_DIR$/src/Makefile" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/chatter.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/src/chatter.cpp" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/config_constants.h" beforeDir="false" afterPath="$PROJECT_DIR$/src/config_constants.h" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/src/ldp.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/src/ldp.cpp" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/ldp.h" beforeDir="false" afterPath="$PROJECT_DIR$/src/ldp.h" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/utils.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/src/utils.cpp" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/utils.h" beforeDir="false" afterPath="$PROJECT_DIR$/src/utils.h" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -211,7 +204,7 @@
       <workItem from="1640588552515" duration="28394000" />
       <workItem from="1640708230106" duration="23902000" />
       <workItem from="1640822886977" duration="6774000" />
-      <workItem from="1640854551589" duration="15243000" />
+      <workItem from="1640854551589" duration="17078000" />
     </task>
     <task id="LOCAL-00001" summary="client kismini nesne yonelimli seye gecirdim ve soket programlama hakkındaki ufkum birkaç metre genişledi.">
       <created>1640533402963</created>
@@ -269,7 +262,14 @@
       <option name="project" value="LOCAL" />
       <updated>1640858214608</updated>
     </task>
-    <option name="localTasksCounter" value="9" />
+    <task id="LOCAL-00009" summary="bye sistemini hallettim. çıkarken 30 kere ack to ack yollayıp çıkacak bye alan kişi veya öbürüydü bilmiyorum kafalar karışık. iki general problemi, karşının çıktığını anlamak mümkün değil.">
+      <created>1640869990133</created>
+      <option name="number" value="00009" />
+      <option name="presentableId" value="LOCAL-00009" />
+      <option name="project" value="LOCAL" />
+      <updated>1640869990133</updated>
+    </task>
+    <option name="localTasksCounter" value="10" />
     <servers />
   </component>
   <component name="TypeScriptGeneratedFilesManager">
@@ -301,6 +301,7 @@
     <MESSAGE value="sınıflara güçler ayrılığı ilkesini nakşettim. sırada gönderme penceresi ve ack ve timeout kaldı." />
     <MESSAGE value="çözemiyorum hataları. neyse, kodu düzenliycem biraz. bitiremedim ödevi de, 1 gün kaldı -5 puanlı cezayla." />
     <MESSAGE value="şu an çalışıyooooooooooooor. ama çok yavaş. lorem bile 800ms sürüyor. Timeout dizisinin geliştirilmesi lazım." />
-    <option name="LAST_COMMIT_MESSAGE" value="şu an çalışıyooooooooooooor. ama çok yavaş. lorem bile 800ms sürüyor. Timeout dizisinin geliştirilmesi lazım." />
+    <MESSAGE value="bye sistemini hallettim. çıkarken 30 kere ack to ack yollayıp çıkacak bye alan kişi veya öbürüydü bilmiyorum kafalar karışık. iki general problemi, karşının çıktığını anlamak mümkün değil." />
+    <option name="LAST_COMMIT_MESSAGE" value="bye sistemini hallettim. çıkarken 30 kere ack to ack yollayıp çıkacak bye alan kişi veya öbürüydü bilmiyorum kafalar karışık. iki general problemi, karşının çıktığını anlamak mümkün değil." />
   </component>
 </project>

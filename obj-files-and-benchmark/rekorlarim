@@ -1,2 +1,5 @@
-simple: 615ms-830ms
+simple: 820ms
+actung: 1832ms
+hack: 31000ms
+
 art: çok uzun ya. timeout queue modelini gelistirmem lazim. çalışmadı bile.

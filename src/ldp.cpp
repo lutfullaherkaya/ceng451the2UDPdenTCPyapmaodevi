@@ -570,12 +570,14 @@ void LDP::waitUntilAckToAckToBye() {
     /**
      * this is two general problem. we can never know for sure if previous ack is ackd. therefore i will just close connection after 40 tries.
      * there is no way none of the 30 packets reach their destination.
+     * 3ms overhead
      */
     for (int i = 0; i < 30; ++i) {
         LDPPacket packet = LDPPacket(true, false, false, byeSeq, byeSeq);
         packet.payload[0] = 0;
         packet.payload[1] = 'b';
         udpSend(packet);
+        usleep(100);
     }
     exit(0);
 }
