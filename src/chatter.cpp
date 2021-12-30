@@ -3,13 +3,14 @@
 //
 
 #include "chatter.h"
-
+#include "pthread.h"
 
 
 
 Chatter::Chatter(const std::string &chateeIp, const std::string &chateePort, const std::string &myPort, bool isClient)
-        : isClient(isClient), ldp(chateeIp, chateePort, myPort, isClient) {
+        : byed(false), isClient(isClient), ldp(chateeIp, chateePort, myPort, isClient) {
     // client
+    byeLock = PTHREAD_MUTEX_INITIALIZER;
     ldp.createAndBindSocket();
     ldp.listen(&Chatter::printMessageHelper, this);
 
@@ -21,12 +22,14 @@ Chatter::Chatter(const std::string &chateeIp, const std::string &chateePort, con
     }
 
     ldp.closeYourMouth();
+
     ldp.closeYourEars();
 
 }
 
-Chatter::Chatter(const std::string &myPort, bool isClient) : isClient(isClient), ldp(myPort, isClient) {
+Chatter::Chatter(const std::string &myPort, bool isClient) : byed(false), isClient(isClient), ldp(myPort, isClient) {
     // server
+    byeLock = PTHREAD_MUTEX_INITIALIZER;
     ldp.createAndBindSocket();
     ldp.listen(&Chatter::printMessageHelper, this);
 
@@ -42,7 +45,7 @@ Chatter::Chatter(const std::string &myPort, bool isClient) : isClient(isClient),
 
 }
 void Chatter::sendMessage(std::string message) {
-    ldp.send(message);
+    ldp.sendMessage(message);
 }
 
 Chatter::~Chatter() {
@@ -51,12 +54,28 @@ Chatter::~Chatter() {
 
 void *Chatter::printMessage(std::string &message) {
     if (message == "BYE\n") {
-
+        setByed(true);
+        exit(0);
     }
-    std::cout << message << std::endl;
+
+    std::cout << message;
     return NULL;
 }
 
 void *Chatter::printMessageHelper(void *context, std::string &message) {
     return ((Chatter *) context)->printMessage(message);
+}
+
+bool Chatter::iDontGetByed() {
+    bool ret_val;
+    pthread_mutex_lock(&byeLock);
+    ret_val = byed;
+    pthread_mutex_unlock(&byeLock);
+    return !ret_val;
+}
+
+void Chatter::setByed(bool byd) {
+    pthread_mutex_lock(&byeLock);
+    byed = byd;
+    pthread_mutex_unlock(&byeLock);
 }

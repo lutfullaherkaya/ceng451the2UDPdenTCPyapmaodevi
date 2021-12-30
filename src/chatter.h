@@ -8,18 +8,22 @@
 #include "ldp.h"
 
 class Chatter {
-private:
-    bool isListening;
 public:
     LDP ldp;
+    bool byed;
 
-    void setIsListening(bool isListening);
+    bool iDontGetByed();
+
+    void setByed(bool byed);
+
+    pthread_mutex_t byeLock;
 
     bool isClient;
 
     Chatter(const std::string &chateeIp, const std::string &chateePort, const std::string &myPort, bool isClient);
 
     Chatter(const std::string &myPort, bool isClient);
+
 
     void sendMessage(std::string message);
 
@@ -29,6 +33,8 @@ public:
     void *printMessage(std::string &message);
 
     static void *printMessageHelper(void *context, std::string &message);
+
+
 
     ~Chatter();
 };

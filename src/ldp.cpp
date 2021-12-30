@@ -10,18 +10,7 @@
  * Bismillahirrahmanirrahim.
  */
 
-// todo: turkce karakterler s1k1nt1l1 cunku galiba utf-8 oldugu icin birden fazla baytli
-// todo: error mesajlarini duzenle.
 #include "ldp.h"
-
-// todo: baglanti kurulmadan server yazamasin.
-
-
-
-
-
-
-
 
 int LDP::createAndBindSocket() {
     struct addrinfo hints;
@@ -60,6 +49,7 @@ int LDP::createAndBindSocket() {
 
     if (isClient) {
         computeChateeAddrInfo();
+        havePartnerIP = true;
     }
     initializeThreadMhreadEtcMtc();
     return 0;
@@ -100,12 +90,12 @@ int LDP::computeChateeAddrInfo() {
 }
 
 LDP::LDP(const std::string &chateeIp, const std::string &chateePort, const std::string &myPort, bool isClient)
-        : chateeIP(chateeIp), chateePort(chateePort), myPort(myPort), isClient(isClient) {
+        : chateeIP(chateeIp), chateePort(chateePort), myPort(myPort), isClient(isClient), havePartnerIP(false) {
     // client
 
 }
 
-LDP::LDP(const std::string &myPort, bool isClient) : myPort(myPort), isClient(isClient) {
+LDP::LDP(const std::string &myPort, bool isClient) : myPort(myPort), isClient(isClient), havePartnerIP(false) {
     // server
 }
 
@@ -125,6 +115,7 @@ LDPPacket LDP::udpReceive() {
 
     // todo: maybe should check if it is the same person sending the mesages. also no need for this at all for client.
     chateeSockaddr = *((struct sockaddr *) &their_addr);
+    havePartnerIP = true;
     char s[INET6_ADDRSTRLEN];
     std::string sender = inet_ntop(their_addr.ss_family,
                                    get_in_addr((struct sockaddr *) &their_addr),
@@ -141,30 +132,24 @@ LDPPacket LDP::udpReceive() {
  *
  * @param message
  */
-void LDP::send(std::string &message) {
+void LDP::sendMessage(std::string &message) {
     std::vector<LDPPacket> packets;
     /**
      * I need my last packet to be null terminated and
-     * the c_str pointer ensures that the string is null terminated.
+     * the c_str() function ensures that the string is null terminated I think reading the docs of the function.
      * The +1's are also for this reason there.
      *
-     * We do the calculations before accessing the critic queue in hope for not busying the threads.
+     * We do the calculations before accessing the critic queue in hope for not busying the senderWindow thread.
      */
     const char *messagePtr = message.c_str();
-    /**
-     * todo: is this inefficient? locking and unlocking rapidly?
-     * nope, it is not my problem. they should have made a better asynchronization algorithm if this is inefficient.
-     */
     for (int i = 0; i < message.length() + 1; i += 8) {
         sem_wait(&packetsToBeSentEmptySlotCount);
         pthread_mutex_lock(&packetsToBeSentMutex);
 
         bool isTheLast = i + 8 > message.length();
-        // Note: no need to limit n to 8 because the constructor reads 8 bytes maximum.
         packetsToBeSent.emplace(messagePtr + i, message.length() - i + 1, false, true, isTheLast, 0, 0);
 
         pthread_mutex_unlock(&packetsToBeSentMutex);
-        // it increments full slot count
         sem_post(&packetsToBeSentFullSlotCount);
     }
 }
@@ -191,6 +176,12 @@ void *LDP::ldpPacketReceiver() {
         if (!packet.isCorrupted) {
             packet.print(false);
             if (packet.isAck) {
+                pthread_mutex_lock(&byeLock);
+                if (packet.ackNumber == byeSeq) {
+                    exit(0);
+                }
+                pthread_mutex_unlock(&byeLock);
+
                 fprintf(stderr, "Received ACK%d.\n", packet.ackNumber);
                 ackAndSlideSenderWindow(packet.ackNumber);
             }
@@ -204,7 +195,7 @@ void *LDP::ldpPacketReceiver() {
 
             }
         } else {
-            fprintf(stderr, "Received and dropped garbled packet. \n");
+            /*fprintf(stderr, "Received and dropped garbled packet. \n");*/
         }
 
     }
@@ -219,6 +210,10 @@ void *LDP::ldpPacketSender() {
     while (true) {
         LDPPacketInWindow packet;
         LDPPacketInWindow *packetPtr;
+
+        while (!havePartnerIP) {
+            usleep(1000);
+        }
 
         // consume packetsToBeSent
         sem_wait(&packetsToBeSentFullSlotCount);
@@ -240,6 +235,12 @@ void *LDP::ldpPacketSender() {
             packet.packet->seqNumber = ++seqNumOfTheLastPacketInSenderWind;
         }
 
+        if (packet.packet->payloadToString() == "BYE\n") {
+            pthread_mutex_lock(&byeLock);
+            byeSeq = packet.packet->seqNumber;
+            pthread_mutex_unlock(&byeLock);
+        }
+
         udpSend(*(packet.packet));
         senderWindow.emplace_back();
         senderWindow.back().shallowSwap(packet);
@@ -258,6 +259,9 @@ void *LDP::ldpPacketRetransmitterHelper(void *context) {
 
 
 void LDP::initializeThreadMhreadEtcMtc() {
+    pthread_mutex_init(&byeLock, NULL);
+    byeSeq = -1;
+
     pthread_mutex_init(&packetsToBeSentMutex, NULL);
     sem_init(&packetsToBeSentEmptySlotCount, 0, PACKETS_TO_BE_SENT_Q_SIZE);
     sem_init(&packetsToBeSentFullSlotCount, 0, 0);
@@ -413,12 +417,14 @@ void LDP::receiveAndSlideReceiverWindow(LDPPacket &p) {
         pthread_mutex_lock(&packetsReceivedMutex);
 
         packetsReceived.push(*(receiverWindow.front().packet));
+
+        pthread_mutex_unlock(&packetsReceivedMutex);
+        sem_post(&packetsReceivedFullSlotCount);
+
         receiverWindow.pop_front();
         seqNumOfTheLastPacketInReceiverWind++;
         receiverWindow.emplace_back(seqNumOfTheLastPacketInReceiverWind);
 
-        pthread_mutex_unlock(&packetsReceivedMutex);
-        sem_post(&packetsReceivedFullSlotCount);
 
     }
 
@@ -463,7 +469,7 @@ uint16_t LDPPacket::calculateChecksum(void *data, size_t n) {
 
     // Add left-over byte, if any
     if (n > 0) {
-        sum += ((uint8_t *) data)[n - 1];
+        sum += ((uint8_t *) dataPtr16)[n - 1];
     }
 
     // Fold 32-bit sum to 16 bits
@@ -589,6 +595,14 @@ void LDP::printRecWindow() const {
     }
     fprintf(stderr, "\n");
 
+}
+
+void LDP::closeYourMouth() {
+    // todo:
+}
+
+void LDP::closeYourEars() {
+    // todo:
 }
 
 

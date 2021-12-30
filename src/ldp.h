@@ -14,65 +14,12 @@
 #define THE2_LDP_H
 
 #include "utils.h"
-
-
-// todo: sil? bufferden cok string girince cortluyor program.
-#define MAXBUFLEN 1234
-
-
+#include "config_constants.h"
 
 /**
  * In LDP, the packet size is constant. The 8 bytes of payload is always sent.
  */
 #define LDP_PACKET_SIZE 15
-
-/**
- * Window Size Calculation
- * Since Troll can only facilitate 16 packets atmost, the window size must be less than atmost 16.
- * Each packet will return as ACK. Therefore for each packet, there is only one packet in the
- * network at the same time, not taking into account the retransmissions from timeout.
- * As the Propagation Delay approaches infinity , the packet count in the network diverges to infinity
- * because every packet is lost and timed out, thus retransmitted. Therefore the timeout duration
- * must be more than double the propagation delay and the Propagation Delay must be finite.
- *
- * 12 seems to be a nice even number for the window size. Since the performance is directly
- * proportional to the window size, it is important for the window size to be as big as possible.
- *
- * Also the window size must not be larger than 15 bits because the sequence numbers are 2 bytes.
- *
- */
-#define SENDER_WINDOW_SIZE 12
-
-/**
- * Just for being sure, receiver window size is more.
- */
-#define RECEIVER_WINDOW_SIZE (SENDER_WINDOW_SIZE+4)
-
-/**
- * We can't queue infinite packets for sending.
- * todo: Crime book is 3.4MB. What happens if this huge input is inputted from stdin? Does fgets work properly or does it drop some lines? Try it.
- */
-#define PACKETS_TO_BE_SENT_Q_SIZE (1000 + SENDER_WINDOW_SIZE)
-#define PACKETS_RECEIVED_Q_SIZE PACKETS_TO_BE_SENT_Q_SIZE
-
-/**
- * Fine tune this
- */
-#define TROLL_PROPAGATION_DELAY 50
-/**
- * RTT + 4ms
- * Assume cpu takes 8 miliseconds to do its thing.
- */
-#define TIMEOUT_DURATION_MS (TROLL_PROPAGATION_DELAY * 2 + 8)
-
-/**
- * Since the maximum message count per packet is 1, then there won't be more than window size messages
- * at a time in the message queue. Make it + 1 just to be sure.
- */
-#define MAX_REC_MESSAGE_Q_SIZE (RECEIVER_WINDOW_SIZE + 1)
-
-
-
 
 class LDPPacket {
 public:
@@ -201,6 +148,7 @@ public:
     std::string myPort;
     struct sockaddr chateeSockaddr;
     bool isClient;
+    bool havePartnerIP;
     bool isListening;
     int sockfd;
 
@@ -250,6 +198,9 @@ public:
     pthread_mutex_t packetsReceivedMutex;
 
 
+    pthread_mutex_t byeLock;
+    long byeSeq;
+
     void printRecWindow() const;
     void printSendWindow() const;
 
@@ -273,7 +224,11 @@ public:
     /**
      * packetsToBeSent producer
      */
-    void send(std::string &message);
+    void sendMessage(std::string &message);
+
+    void closeYourMouth();
+
+    void closeYourEars();
 
 private:
     /**

@@ -16,25 +16,24 @@
     </configurations>
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="6c32ae89-926d-4d8a-9c14-ab01e47c954f" name="Changes" comment="çözemiyorum hataları. neyse, kodu düzenliycem biraz. bitiremedim ödevi de, 1 gün kaldı -5 puanlı cezayla.">
-      <change afterPath="$PROJECT_DIR$/src/chatter.cpp" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/chatter.h" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/client" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/server" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/utils.cpp" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/utils.h" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/.idea/inspectionProfiles/Project_Default.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/inspectionProfiles/Project_Default.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/.idea/misc.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/misc.xml" afterDir="false" />
+    <list default="true" id="6c32ae89-926d-4d8a-9c14-ab01e47c954f" name="Changes" comment="bilmiyorum su an ne kadar calisiyor. bye yapılcak. test edilcek. benchmark yapılcak.">
+      <change afterPath="$PROJECT_DIR$/lutfullah_erkaya.tar.xz" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/obj-files-and-benchmark/art" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/obj-files-and-benchmark/artmate" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/obj-files-and-benchmark/client" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/obj-files-and-benchmark/daffy" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/obj-files-and-benchmark/rekorlarim" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/obj-files-and-benchmark/server" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/src/config_constants.h" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/Makefile" beforeDir="false" afterPath="$PROJECT_DIR$/src/Makefile" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/client" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/client.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/src/client.cpp" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/client.h" beforeDir="false" afterPath="$PROJECT_DIR$/src/client.h" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/ldp.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/src/ldp.cpp" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/ldp.h" beforeDir="false" afterPath="$PROJECT_DIR$/src/ldp.h" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/server" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/server.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/src/server.cpp" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/server.h" beforeDir="false" afterPath="$PROJECT_DIR$/src/server.h" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/Makefile" beforeDir="false" afterPath="$PROJECT_DIR$/src/Makefile" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/chatter.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/src/chatter.cpp" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/chatter.h" beforeDir="false" afterPath="$PROJECT_DIR$/src/chatter.h" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/client" beforeDir="false" afterPath="$PROJECT_DIR$/src/.fuse_hidden000039d90000001d" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/client.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/src/client.cpp" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/ldp.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/src/ldp.cpp" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/ldp.h" beforeDir="false" afterPath="$PROJECT_DIR$/src/ldp.h" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/server" beforeDir="false" afterPath="$PROJECT_DIR$/src/.fuse_hidden000039d80000001c" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -55,7 +54,7 @@
   <component name="Git.Settings">
     <option name="RECENT_BRANCH_BY_REPOSITORY">
       <map>
-        <entry key="$PROJECT_DIR$" value="4b835dd5d57413294cf7eb34c29ad8b365ad0435" />
+        <entry key="$PROJECT_DIR$" value="222fa7322467d9d7812a9ee28b0b656c34fc78df" />
       </map>
     </option>
     <option name="RECENT_GIT_ROOT_PATH" value="$PROJECT_DIR$" />
@@ -88,27 +87,10 @@
             </list>
           </value>
         </entry>
-        <entry>
-          <key>
-            <ExternalProjectPojo>
-              <option name="name" value="the2" />
-              <option name="path" value="$PROJECT_DIR$" />
-            </ExternalProjectPojo>
-          </key>
-          <value>
-            <list>
-              <ExternalProjectPojo>
-                <option name="name" value="the2" />
-                <option name="path" value="$PROJECT_DIR$" />
-              </ExternalProjectPojo>
-            </list>
-          </value>
-        </entry>
       </map>
     </option>
     <option name="projectSyncType">
       <map>
-        <entry key="$PROJECT_DIR$" value="RE_IMPORT" />
         <entry key="$PROJECT_DIR$/src" value="RE_IMPORT" />
       </map>
     </option>
@@ -144,7 +126,7 @@
     <property name="WebServerToolWindowFactoryState" value="false" />
     <property name="cf.first.check.clang-format" value="false" />
     <property name="cidr.known.project.marker" value="true" />
-    <property name="last_opened_file_path" value="$PROJECT_DIR$/../../../2. sınıf 1. dönem ders/ceng213 veri yapıları/ödevler/ödev 3/odevraw/Student Pack/Makefile" />
+    <property name="last_opened_file_path" value="$USER_HOME$/2. sınıf 1. dönem ders/ceng213 veri yapıları/ödevler/ödev 3/odevraw/Student Pack/Makefile" />
     <property name="node.js.detected.package.eslint" value="true" />
     <property name="node.js.selected.package.eslint" value="(autodetect)" />
     <property name="nodejs_package_manager_path" value="npm" />
@@ -153,6 +135,7 @@
   </component>
   <component name="RecentsManager">
     <key name="MoveFile.RECENT_KEYS">
+      <recent name="$PROJECT_DIR$/obj-files-and-benchmark" />
       <recent name="$PROJECT_DIR$/src" />
     </key>
   </component>
@@ -167,12 +150,12 @@
         <option name="CLION.COMPOUND.BUILD" enabled="true" />
       </method>
     </configuration>
-    <configuration name="client" type="CLionNativeAppRunConfigurationType" PROGRAM_PARAMS="127.0.0.1 5200 5201" REDIRECT_INPUT="false" ELEVATE="false" USE_EXTERNAL_CONSOLE="false" PASS_PARENT_ENVS_2="true" PROJECT_NAME="the2" TARGET_NAME="client" CONFIG_NAME="client" version="1" RUN_PATH="$PROJECT_DIR$/src/client">
+    <configuration name="client" type="CLionNativeAppRunConfigurationType" PROGRAM_PARAMS="127.0.0.1 5200 5201" REDIRECT_INPUT="false" ELEVATE="false" USE_EXTERNAL_CONSOLE="false" PASS_PARENT_ENVS_2="true" PROJECT_NAME="the2" TARGET_NAME="client" CONFIG_NAME="client" version="1" RUN_PATH="$PROJECT_DIR$/obj-files-and-benchmark/client">
       <method v="2">
         <option name="CLION.COMPOUND.BUILD" enabled="true" />
       </method>
     </configuration>
-    <configuration name="server" type="CLionNativeAppRunConfigurationType" PROGRAM_PARAMS="5202" REDIRECT_INPUT="false" ELEVATE="false" USE_EXTERNAL_CONSOLE="false" WORKING_DIR="file://$PROJECT_DIR$" PASS_PARENT_ENVS_2="true" PROJECT_NAME="the2" TARGET_NAME="server" CONFIG_NAME="server" version="1" RUN_PATH="$PROJECT_DIR$/src/server">
+    <configuration name="server" type="CLionNativeAppRunConfigurationType" PROGRAM_PARAMS="5202" REDIRECT_INPUT="false" ELEVATE="false" USE_EXTERNAL_CONSOLE="false" WORKING_DIR="file://$PROJECT_DIR$" PASS_PARENT_ENVS_2="true" PROJECT_NAME="the2" TARGET_NAME="server" CONFIG_NAME="server" version="1" RUN_PATH="$PROJECT_DIR$/obj-files-and-benchmark/server">
       <method v="2">
         <option name="CLION.COMPOUND.BUILD" enabled="true" />
       </method>
@@ -205,10 +188,10 @@
       <item itemvalue="Makefile Application.all" />
       <item itemvalue="Makefile Application.client" />
       <item itemvalue="Makefile Application.server" />
+      <item itemvalue="Makefile Target.all (1)" />
       <item itemvalue="Makefile Target.all" />
       <item itemvalue="Makefile Target.client" />
       <item itemvalue="Makefile Target.server" />
-      <item itemvalue="Makefile Target.all (1)" />
     </list>
     <recent_temporary>
       <list>
@@ -232,6 +215,8 @@
       <workItem from="1640553004573" duration="952000" />
       <workItem from="1640588552515" duration="28394000" />
       <workItem from="1640708230106" duration="23902000" />
+      <workItem from="1640822886977" duration="6774000" />
+      <workItem from="1640854551589" duration="3551000" />
     </task>
     <task id="LOCAL-00001" summary="client kismini nesne yonelimli seye gecirdim ve soket programlama hakkındaki ufkum birkaç metre genişledi.">
       <created>1640533402963</created>
@@ -293,7 +278,13 @@
       <map>
         <entry key="MAIN">
           <value>
-            <State />
+            <State>
+              <option name="CUSTOM_BOOLEAN_PROPERTIES">
+                <map>
+                  <entry key="Show.Git.Branches" value="true" />
+                </map>
+              </option>
+            </State>
           </value>
         </entry>
       </map>
