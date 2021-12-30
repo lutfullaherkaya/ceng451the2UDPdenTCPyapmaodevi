@@ -27,6 +27,10 @@
 #include <iostream>
 #include <deque>
 
+#include "threadsafedeque.h"
+#include "config_constants.h"
+
+
 long getTimeDifferenceMs(timespec start, timespec end);
 
 void *get_in_addr(struct sockaddr *sa);
@@ -68,5 +72,6 @@ void *deserialize_char(void *buffer, char *value);
 
 void sleepMs(long ms);
 
+int sem_timedwait_millsecs(sem_t *sem, long msecs);
 
 #endif //THE2_UTILS_H

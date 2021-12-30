@@ -3,6 +3,7 @@
 //
 
 #include "utils.h"
+
 long getTimeDifferenceMs(timespec start, timespec end) {
     return ((long) end.tv_sec - (long) start.tv_sec) * 1000 + ((long) end.tv_nsec - (long) start.tv_nsec) / 1000000;
 }
@@ -86,8 +87,29 @@ void *get_in_addr(struct sockaddr *sa) {
 }
 
 void sleepMs(long ms) {
-    if (ms > 0 && ms * 1000 > 0) {
+    long secs = ms / 1000;
+    if (secs > 0) {
+        sleep(secs);
+    }
+    if (ms * 1000 > 0) {
         usleep(ms * 1000);
     }
+}
 
+/**
+ * source https://titanwolf.org/Network/Articles/Article?AID=e0cc10a2-dd8f-4029-a088-763e843c7092
+ */
+int sem_timedwait_millsecs(sem_t *sem, long msecs) {
+    struct timespec ts;
+    clock_gettime(MY_CLOCK, &ts);
+    long secs = msecs / 1000;
+    msecs = msecs % 1000;
+
+    long add = 0;
+    msecs = msecs * 1000 * 1000 + ts.tv_nsec;
+    add = msecs / (1000 * 1000 * 1000);
+    ts.tv_sec += (add + secs);
+    ts.tv_nsec = msecs % (1000 * 1000 * 1000);
+
+    return sem_timedwait(sem, &ts);
 }

@@ -20,11 +20,6 @@ Chatter::Chatter(const std::string &chateeIp, const std::string &chateePort, con
         fgets(message, MAXBUFLEN, stdin);
         sendMessage(message);
     }
-
-    ldp.closeYourMouth();
-
-    ldp.closeYourEars();
-
 }
 
 Chatter::Chatter(const std::string &myPort, bool isClient) : byed(false), isClient(isClient), ldp(myPort, isClient) {
@@ -40,9 +35,6 @@ Chatter::Chatter(const std::string &myPort, bool isClient) : byed(false), isClie
         sendMessage(message);
     }
 
-    ldp.closeYourMouth();
-    ldp.closeYourEars();
-
 }
 void Chatter::sendMessage(std::string message) {
     ldp.sendMessage(message);
@@ -55,6 +47,14 @@ Chatter::~Chatter() {
 void *Chatter::printMessage(std::string &message) {
     if (message == "BYE\n") {
         setByed(true);
+        ldp.closeYourMouth();
+/*
+        ldp.closeYourEars();
+*/
+        /**
+         * right now, we got bye. we should send ack to bye and wait ack for that ack.
+         */
+        ldp.waitUntilAckToAckToBye();
         exit(0);
     }
 

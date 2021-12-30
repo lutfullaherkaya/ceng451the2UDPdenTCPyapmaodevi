@@ -5,6 +5,8 @@
 #ifndef THE2_CONFIG_CONSTANTS_H
 #define THE2_CONFIG_CONSTANTS_H
 
+#include "utils.h"
+
 #define MAXBUFLEN 256
 
 /**
@@ -52,6 +54,11 @@
  */
 #define PACKETS_TO_BE_SENT_Q_SIZE (1000 + SENDER_WINDOW_SIZE)
 #define PACKETS_RECEIVED_Q_SIZE PACKETS_TO_BE_SENT_Q_SIZE
+
+/**
+ * I don't know if it matters
+ */
+#define MY_CLOCK CLOCK_MONOTONIC
 
 
 

@@ -1,12 +1,12 @@
 # Makefile for client and server
 
 CC = g++
-OBJCLI = client.cpp ldp.cpp chatter.cpp utils.cpp
-OBJSRV = server.cpp ldp.cpp chatter.cpp utils.cpp
+OBJCLI = client.cpp threadsafedeque.cpp ldp.cpp chatter.cpp utils.cpp
+OBJSRV = server.cpp threadsafedeque.cpp ldp.cpp chatter.cpp utils.cpp
 CPPFLAGS = -g
 # setup for system
 LIBS = -lpthread
-DEPS = client.h ldp.h chatter.h utils.h config_constants.h
+DEPS = client.h ldp.h chatter.h utils.h config_constants.h threadsafedeque.h
 
 all: client server
 

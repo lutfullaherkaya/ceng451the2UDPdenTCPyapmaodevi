@@ -14,12 +14,18 @@
 #define THE2_LDP_H
 
 #include "utils.h"
-#include "config_constants.h"
+
+/**
+ * i don't understand makefile and compiling so here i include instead of linking
+ */
+#include "threadsafedeque.cpp"
 
 /**
  * In LDP, the packet size is constant. The 8 bytes of payload is always sent.
  */
 #define LDP_PACKET_SIZE 15
+
+
 
 class LDPPacket {
 public:
@@ -71,8 +77,13 @@ public:
     LDPPacket(const char *data, size_t n, bool isAck, bool isSeq, bool isTheLastPacketOfTheMessage, uint16_t seqNumber,
               uint16_t ackNumber);
 
+    /**
+     * packet with zero array payload
+     */
     LDPPacket(bool isAck, bool isSeq, bool isTheLastPacketOfTheMessage, uint16_t seqNumber,
               uint16_t ackNumber);
+
+    static LDPPacket mergeAckAndSeqPackets(LDPPacket &ack, LDPPacket &seq);
 
     void print(bool sending) const;
 
@@ -96,9 +107,11 @@ public:
 
     static uint16_t calculateChecksum(void *data, size_t n);
 };
+
 /**
  * if isNULL: not received yet but expected to be
- * if not in window: not yet sent
+ * if not in window: not yet sent.
+ * now that i think about it, this class could inherit LDPPacket
  */
 class LDPPacketInWindow {
 public:
@@ -109,6 +122,9 @@ public:
     LDPPacketInWindow();
 
     LDPPacketInWindow(uint16_t seqNum);
+
+    LDPPacketInWindow(const char *data, size_t n, bool isAck, bool isSeq, bool isTheLastPacketOfTheMessage, uint16_t seqNumber,
+                      uint16_t ackNumber, bool isAckd, uint16_t expectedSeqNumber);
 
     LDPPacketInWindow &operator=(const LDPPacketInWindow &p);
 
@@ -136,6 +152,7 @@ public:
     timespec sentTime;
 
     PacketAndItsTimeout(LDPPacketInWindow *packet, timespec sentTime);
+
     long timeUntilTimeout() const;
 
 };
@@ -162,15 +179,24 @@ public:
      * packetsToBeSent -> senderWindow -> receiverWindow -> packetsReceived -> receivedMessageQueue
      */
 
-
-    std::queue<LDPPacket> packetsToBeSent;
-    sem_t packetsToBeSentFullSlotCount, packetsToBeSentEmptySlotCount;
-    pthread_mutex_t packetsToBeSentMutex;
-
-    std::deque<LDPPacketInWindow> senderWindow;
-    sem_t senderWindowFullSlotCount, senderWindowEmptySlotCount;
-    pthread_mutex_t senderWindowMutex;
+    ThreadSafeDeque<LDPPacket> packetsToBeSent;
+    ThreadSafeDeque<LDPPacketInWindow> senderWindow;
     uint16_t seqNumOfTheLastPacketInSenderWind;
+
+    /**
+     * Receiver window is always full with null packets (i.e. expected but not yet received packets).
+     */
+    ThreadSafeDeque<LDPPacketInWindow> receiverWindow;
+    uint16_t seqNumOfTheLastPacketInReceiverWind;
+
+    ThreadSafeDeque<LDPPacket> packetsReceived;
+
+    /**
+     * packetsReceived producer
+     */
+    void receiveAndSlideReceiverWindow(LDPPacket &p);
+
+
 
     /**
      * senderWindow consumer&producer
@@ -180,28 +206,14 @@ public:
     void ackAndSlideSenderWindow(uint16_t ackNum);
 
 
-    /**
-     * Receiver window is always full with null packets (i.e. expected but not yet received packets).
-     */
-    std::deque<LDPPacketInWindow> receiverWindow;
-    sem_t receiverWindowFullSlotCount, receiverWindowEmptySlotCount;
-    pthread_mutex_t receiverWindowMutex;
-    uint16_t seqNumOfTheLastPacketInReceiverWind;
 
-    /**
-     * packetsReceived producer
-     */
-    void receiveAndSlideReceiverWindow(LDPPacket &p);
-
-    std::queue<LDPPacket> packetsReceived;
-    sem_t packetsReceivedFullSlotCount, packetsReceivedEmptySlotCount;
-    pthread_mutex_t packetsReceivedMutex;
 
 
     pthread_mutex_t byeLock;
     long byeSeq;
 
     void printRecWindow() const;
+
     void printSendWindow() const;
 
 
@@ -221,6 +233,8 @@ public:
 
     int computeChateeAddrInfo();
 
+    void waitUntilAckToAckToBye();
+
     /**
      * packetsToBeSent producer
      */
@@ -231,6 +245,11 @@ public:
     void closeYourEars();
 
 private:
+    pthread_t ldpPacketSenderThreadID;
+    pthread_t ldpPacketRetransmitterThreadID;
+    pthread_t listenerThreadID;
+    pthread_t messageProducerThreadID;
+
     /**
      * packetsToBeSent consumer
      * senderWindow producer
@@ -264,7 +283,6 @@ private:
     static void *messageProducerHelper(void *context);
 
 
-
     void udpSend(LDPPacket &packet);
 
 
@@ -275,7 +293,6 @@ private:
     LDPPacket udpReceive();
 
 };
-
 
 
 #endif //THE2_LDP_H
